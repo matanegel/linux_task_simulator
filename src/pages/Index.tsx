@@ -78,6 +78,7 @@ export default function Index() {
             briefing={level.briefing}
             objective={level.objective}
             toolbelt={level.toolbelt}
+            onSubmitAnswer={handleSubmitAnswer}
           />
         </div>
 

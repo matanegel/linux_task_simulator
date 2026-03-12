@@ -1,4 +1,5 @@
-import { Target, Wrench, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
+import { Target, Wrench, ChevronRight, Send, ShieldCheck } from 'lucide-react';
 
 interface MissionBriefingProps {
   levelId: number;
@@ -7,9 +8,25 @@ interface MissionBriefingProps {
   briefing: string;
   objective: string;
   toolbelt: string[];
+  onSubmitAnswer: (answer: string) => boolean;
 }
 
-export default function MissionBriefing({ levelId, title, subtitle, briefing, objective, toolbelt }: MissionBriefingProps) {
+export default function MissionBriefing({ levelId, title, subtitle, briefing, objective, toolbelt, onSubmitAnswer }: MissionBriefingProps) {
+  const [answer, setAnswer] = useState('');
+  const [error, setError] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!answer.trim()) return;
+    const correct = onSubmitAnswer(answer.trim());
+    if (!correct) {
+      setError(true);
+      setTimeout(() => setError(false), 1500);
+    } else {
+      setAnswer('');
+    }
+  };
+
   return (
     <div className="flex flex-col gap-4 h-full overflow-y-auto pr-2">
       {/* Level Header */}
@@ -35,6 +52,35 @@ export default function MissionBriefing({ levelId, title, subtitle, briefing, ob
         </div>
         <p className="font-mono text-sm text-terminal-green">{objective}</p>
       </div>
+
+      {/* Answer Submission */}
+      <form onSubmit={handleSubmit} className="mission-card p-4 border-l-2 border-l-terminal-green">
+        <div className="flex items-center gap-2 mb-3">
+          <ShieldCheck className="w-4 h-4 text-terminal-green" />
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-terminal-green">Submit Answer</h2>
+        </div>
+        <p className="text-xs text-muted-foreground mb-3">Use the terminal to find the answer, then submit it here.</p>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={answer}
+            onChange={(e) => setAnswer(e.target.value)}
+            placeholder="Enter your answer..."
+            className={`flex-1 bg-secondary border rounded px-3 py-2 text-sm font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 transition-colors ${
+              error ? 'border-primary ring-1 ring-primary' : 'border-border focus:ring-terminal-green'
+            }`}
+          />
+          <button
+            type="submit"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground px-3 py-2 rounded text-sm font-semibold flex items-center gap-1 transition-colors"
+          >
+            <Send className="w-3.5 h-3.5" />
+          </button>
+        </div>
+        {error && (
+          <p className="text-xs text-primary mt-2 font-mono animate-pulse">✗ Incorrect. Keep investigating...</p>
+        )}
+      </form>
 
       {/* Toolbelt */}
       <div className="mission-card p-4">
