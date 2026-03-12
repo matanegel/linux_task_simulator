@@ -105,7 +105,7 @@ export default function GameTerminal({
     // Welcome banner
     term.writeln('\x1b[1;31m');
     term.writeln('  ╔═══════════════════════════════════════════╗');
-    term.writeln('  ║     LINUX QUEST: THE RED HAT CHALLENGE    ║');
+    term.writeln('  ║      LINUX QUEST: TERMINAL CHALLENGE      ║');
     term.writeln('  ╚═══════════════════════════════════════════╝');
     term.writeln('\x1b[0m');
     term.writeln('  \x1b[33mType "help" for available commands\x1b[0m');
