@@ -11,6 +11,7 @@ export interface Level {
   subtitle: string;
   briefing: string;
   objective: string;
+  answer: string;
   toolbelt: string[];
   hints: string[];
   filesystem: Record<string, FSNode>;
@@ -25,6 +26,7 @@ export const levels: Level[] = [
     subtitle: "Level 01 — Reconnaissance",
     briefing: "Welcome, recruit. You've been dropped into an unknown system. Intelligence reports a hidden file containing a 'secret_id' somewhere in the current directory. Your mission: find it and read its contents.",
     objective: "Find and read the 'secret_id' file hidden in the current directory.",
+    answer: "FLAG{linux_recruit_001}",
     toolbelt: ["ls", "cat"],
     hints: [
       "Try using 'ls' to list files in the current directory.",
@@ -54,6 +56,7 @@ export const levels: Level[] = [
     subtitle: "Level 02 — Navigation",
     briefing: "Our scouts have identified a nested archive structure. Somewhere deep inside the 'deep/archive' directory tree lies a file containing the word 'PHOENIX'. Navigate the maze and locate it using grep.",
     objective: "Navigate to 'deep/archive' and find the file containing 'PHOENIX'.",
+    answer: "classified.dat",
     toolbelt: ["cd", "pwd", "grep", "ls", "cat"],
     hints: [
       "Use 'cd deep' to enter the deep directory.",
@@ -102,6 +105,7 @@ export const levels: Level[] = [
     subtitle: "Level 03 — QE Focused",
     briefing: "You've located 'script.sh' — a critical deployment script. But it won't execute. The file permissions are locked down. Your task: inspect the permissions, make it executable, and run it to reveal the flag.",
     objective: "Make 'script.sh' executable and run it.",
+    answer: "FLAG{permissions_mastered_303}",
     toolbelt: ["ls -l", "chmod", "./script.sh", "cat"],
     hints: [
       "Use 'ls -l' to see file permissions.",
@@ -132,6 +136,7 @@ export const levels: Level[] = [
     subtitle: "Level 04 — Log Analysis",
     briefing: "A massive syslog file has been dumped from a bare metal server. Somewhere in the noise is a unique error code that appears exactly once. Use sorting and filtering to isolate it. The clock is ticking.",
     objective: "Find the unique error code that appears only once in 'syslog'.",
+    answer: "ERR-9901",
     toolbelt: ["cat", "sort", "uniq -u", "tail", "grep"],
     hints: [
       "Use 'cat syslog' to view the log file.",
