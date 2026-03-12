@@ -91,7 +91,7 @@ export const levels: Level[] = [
     },
     startDir: '/',
     validate: (_fs, history) => {
-      const hasGrep = history.some(cmd => cmd.includes('grep') && cmd.includes('RedHat'));
+      const hasGrep = history.some(cmd => cmd.includes('grep') && cmd.includes('PHOENIX'));
       const hasCat = history.some(cmd => cmd.includes('cat') && cmd.includes('classified'));
       return hasGrep || hasCat;
     }

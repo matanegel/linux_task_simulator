@@ -236,7 +236,7 @@ export default function GameTerminal({
         <div className="terminal-dot bg-terminal-amber" />
         <div className="terminal-dot bg-terminal-green" />
         <span className="font-mono text-xs text-muted-foreground ml-2">
-          recruit@redhat-quest ~ bash
+          recruit@linuxquest ~ bash
         </span>
       </div>
       <div ref={termRef} className="flex-1 min-h-0" />
