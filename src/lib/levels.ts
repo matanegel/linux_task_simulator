@@ -73,7 +73,7 @@ export const levels: Level[] = [
                 children: {
                   'file_a.txt': { type: 'file', content: 'Fedora is a community project.' },
                   'file_b.txt': { type: 'file', content: 'CentOS Stream is the upstream for RHEL.' },
-                  'classified.dat': { type: 'file', content: 'ACCESS GRANTED: RedHat Enterprise Linux confirmed.' },
+                  'classified.dat': { type: 'file', content: 'ACCESS GRANTED: PHOENIX protocol confirmed.' },
                   'noise.log': { type: 'file', content: 'Error: connection timed out. Retry in 30s.' },
                 }
               },
