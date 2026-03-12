@@ -52,13 +52,13 @@ export const levels: Level[] = [
     id: 2,
     title: "The Maze",
     subtitle: "Level 02 — Navigation",
-    briefing: "Our scouts have identified a nested archive structure. Somewhere deep inside the 'deep/archive' directory tree lies a file containing the word 'RedHat'. Navigate the maze and locate it using grep.",
-    objective: "Navigate to 'deep/archive' and find the file containing 'RedHat'.",
+    briefing: "Our scouts have identified a nested archive structure. Somewhere deep inside the 'deep/archive' directory tree lies a file containing the word 'PHOENIX'. Navigate the maze and locate it using grep.",
+    objective: "Navigate to 'deep/archive' and find the file containing 'PHOENIX'.",
     toolbelt: ["cd", "pwd", "grep", "ls", "cat"],
     hints: [
       "Use 'cd deep' to enter the deep directory.",
       "Use 'pwd' to check your current location.",
-      "Use 'grep -r RedHat .' to search recursively for the word.",
+      "Use 'grep -r PHOENIX .' to search recursively for the word.",
       "Once you find the file, use 'cat' to read it."
     ],
     filesystem: {
