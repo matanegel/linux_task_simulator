@@ -36,9 +36,9 @@ export const levels: Level[] = [
       '/': {
         type: 'dir',
         children: {
-          'readme.txt': { type: 'file', content: 'Welcome to the Red Hat Challenge. Look closer...' },
+          'readme.txt': { type: 'file', content: 'Welcome to Linux Quest. Look closer...' },
           'notes.log': { type: 'file', content: 'Nothing interesting here. Or is there?' },
-          '.secret_id': { type: 'file', content: 'FLAG{redhat_recruit_001}' },
+          '.secret_id': { type: 'file', content: 'FLAG{linux_recruit_001}' },
           'decoy.txt': { type: 'file', content: 'This is not the file you are looking for.' },
         }
       }
@@ -52,13 +52,13 @@ export const levels: Level[] = [
     id: 2,
     title: "The Maze",
     subtitle: "Level 02 — Navigation",
-    briefing: "Our scouts have identified a nested archive structure. Somewhere deep inside the 'deep/archive' directory tree lies a file containing the word 'RedHat'. Navigate the maze and locate it using grep.",
-    objective: "Navigate to 'deep/archive' and find the file containing 'RedHat'.",
+    briefing: "Our scouts have identified a nested archive structure. Somewhere deep inside the 'deep/archive' directory tree lies a file containing the word 'PHOENIX'. Navigate the maze and locate it using grep.",
+    objective: "Navigate to 'deep/archive' and find the file containing 'PHOENIX'.",
     toolbelt: ["cd", "pwd", "grep", "ls", "cat"],
     hints: [
       "Use 'cd deep' to enter the deep directory.",
       "Use 'pwd' to check your current location.",
-      "Use 'grep -r RedHat .' to search recursively for the word.",
+      "Use 'grep -r PHOENIX .' to search recursively for the word.",
       "Once you find the file, use 'cat' to read it."
     ],
     filesystem: {
@@ -73,7 +73,7 @@ export const levels: Level[] = [
                 children: {
                   'file_a.txt': { type: 'file', content: 'Fedora is a community project.' },
                   'file_b.txt': { type: 'file', content: 'CentOS Stream is the upstream for RHEL.' },
-                  'classified.dat': { type: 'file', content: 'ACCESS GRANTED: RedHat Enterprise Linux confirmed.' },
+                  'classified.dat': { type: 'file', content: 'ACCESS GRANTED: PHOENIX protocol confirmed.' },
                   'noise.log': { type: 'file', content: 'Error: connection timed out. Retry in 30s.' },
                 }
               },
@@ -91,7 +91,7 @@ export const levels: Level[] = [
     },
     startDir: '/',
     validate: (_fs, history) => {
-      const hasGrep = history.some(cmd => cmd.includes('grep') && cmd.includes('RedHat'));
+      const hasGrep = history.some(cmd => cmd.includes('grep') && cmd.includes('PHOENIX'));
       const hasCat = history.some(cmd => cmd.includes('cat') && cmd.includes('classified'));
       return hasGrep || hasCat;
     }

@@ -46,10 +46,10 @@ export default function Index() {
       <header className="flex items-center justify-between px-6 py-3 border-b border-border shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-sm font-mono">RH</span>
+            <span className="text-primary-foreground font-bold text-sm font-mono">LQ</span>
           </div>
           <h1 className="text-lg font-bold tracking-tight text-foreground">
-            Linux Quest<span className="text-primary">:</span> The Red Hat Challenge
+            Linux Quest<span className="text-primary">:</span> Terminal Challenge
           </h1>
         </div>
         <div className="flex items-center gap-2">
