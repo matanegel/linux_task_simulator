@@ -29,6 +29,14 @@ export default function Index() {
     if (!showSuccess) setShowSuccess(true);
   }, [showSuccess]);
 
+  const handleSubmitAnswer = useCallback((answer: string): boolean => {
+    if (answer.toLowerCase() === level.answer.toLowerCase()) {
+      handleLevelComplete();
+      return true;
+    }
+    return false;
+  }, [level.answer, handleLevelComplete]);
+
   const handleNextLevel = useCallback(() => {
     setShowSuccess(false);
     const next = currentLevel + 1 >= levels.length ? 0 : currentLevel + 1;
