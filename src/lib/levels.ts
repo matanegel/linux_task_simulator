@@ -56,6 +56,7 @@ export const levels: Level[] = [
     subtitle: "Level 02 — Navigation",
     briefing: "Our scouts have identified a nested archive structure. Somewhere deep inside the 'deep/archive' directory tree lies a file containing the word 'PHOENIX'. Navigate the maze and locate it using grep.",
     objective: "Navigate to 'deep/archive' and find the file containing 'PHOENIX'.",
+    answer: "classified.dat",
     toolbelt: ["cd", "pwd", "grep", "ls", "cat"],
     hints: [
       "Use 'cd deep' to enter the deep directory.",
