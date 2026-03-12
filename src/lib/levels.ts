@@ -136,6 +136,7 @@ export const levels: Level[] = [
     subtitle: "Level 04 — Log Analysis",
     briefing: "A massive syslog file has been dumped from a bare metal server. Somewhere in the noise is a unique error code that appears exactly once. Use sorting and filtering to isolate it. The clock is ticking.",
     objective: "Find the unique error code that appears only once in 'syslog'.",
+    answer: "ERR-9901",
     toolbelt: ["cat", "sort", "uniq -u", "tail", "grep"],
     hints: [
       "Use 'cat syslog' to view the log file.",
