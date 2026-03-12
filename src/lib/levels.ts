@@ -105,6 +105,7 @@ export const levels: Level[] = [
     subtitle: "Level 03 — QE Focused",
     briefing: "You've located 'script.sh' — a critical deployment script. But it won't execute. The file permissions are locked down. Your task: inspect the permissions, make it executable, and run it to reveal the flag.",
     objective: "Make 'script.sh' executable and run it.",
+    answer: "FLAG{permissions_mastered_303}",
     toolbelt: ["ls -l", "chmod", "./script.sh", "cat"],
     hints: [
       "Use 'ls -l' to see file permissions.",
