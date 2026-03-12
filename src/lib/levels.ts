@@ -26,6 +26,7 @@ export const levels: Level[] = [
     subtitle: "Level 01 — Reconnaissance",
     briefing: "Welcome, recruit. You've been dropped into an unknown system. Intelligence reports a hidden file containing a 'secret_id' somewhere in the current directory. Your mission: find it and read its contents.",
     objective: "Find and read the 'secret_id' file hidden in the current directory.",
+    answer: "FLAG{linux_recruit_001}",
     toolbelt: ["ls", "cat"],
     hints: [
       "Try using 'ls' to list files in the current directory.",
