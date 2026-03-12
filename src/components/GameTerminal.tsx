@@ -42,7 +42,7 @@ export default function GameTerminal({
 
   const getPrompt = useCallback(() => {
     const dir = cwdRef.current === '/' ? '/' : cwdRef.current.split('/').pop() || '/';
-    return `${PROMPT_COLOR}[recruit@redhat ${GREEN}${dir}${PROMPT_COLOR}]$${RESET} `;
+    return `${PROMPT_COLOR}[recruit@linuxquest ${GREEN}${dir}${PROMPT_COLOR}]$${RESET} `;
   }, []);
 
   const writePrompt = useCallback(() => {
