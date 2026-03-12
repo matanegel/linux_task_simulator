@@ -11,6 +11,7 @@ export interface Level {
   subtitle: string;
   briefing: string;
   objective: string;
+  answer: string;
   toolbelt: string[];
   hints: string[];
   filesystem: Record<string, FSNode>;
