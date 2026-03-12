@@ -36,9 +36,9 @@ export const levels: Level[] = [
       '/': {
         type: 'dir',
         children: {
-          'readme.txt': { type: 'file', content: 'Welcome to the Red Hat Challenge. Look closer...' },
+          'readme.txt': { type: 'file', content: 'Welcome to Linux Quest. Look closer...' },
           'notes.log': { type: 'file', content: 'Nothing interesting here. Or is there?' },
-          '.secret_id': { type: 'file', content: 'FLAG{redhat_recruit_001}' },
+          '.secret_id': { type: 'file', content: 'FLAG{linux_recruit_001}' },
           'decoy.txt': { type: 'file', content: 'This is not the file you are looking for.' },
         }
       }
