@@ -25,17 +25,13 @@ export default function Index() {
     setHintIndex(prev => prev + 1);
   }, []);
 
-  const handleLevelComplete = useCallback(() => {
-    if (!showSuccess) setShowSuccess(true);
-  }, [showSuccess]);
-
   const handleSubmitAnswer = useCallback((answer: string): boolean => {
     if (answer.toLowerCase() === level.answer.toLowerCase()) {
-      handleLevelComplete();
+      setShowSuccess(true);
       return true;
     }
     return false;
-  }, [level.answer, handleLevelComplete]);
+  }, [level.answer]);
 
   const handleNextLevel = useCallback(() => {
     setShowSuccess(false);
@@ -62,7 +58,7 @@ export default function Index() {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono text-muted-foreground px-3 py-1 rounded bg-secondary">
-            LVL {level.id}/4
+            LVL {level.id}/{levels.length}
           </span>
         </div>
       </header>
@@ -73,6 +69,7 @@ export default function Index() {
         <div className="w-[380px] shrink-0 border-r border-border p-6">
           <MissionBriefing
             levelId={level.id}
+            totalLevels={levels.length}
             title={level.title}
             subtitle={level.subtitle}
             briefing={level.briefing}
@@ -93,8 +90,8 @@ export default function Index() {
             onFsChange={setFs}
             onCommandExecuted={handleCommandExecuted}
             onHintRequested={handleHintRequested}
-            onLevelComplete={handleLevelComplete}
-            validateLevel={level.validate}
+            onLevelComplete={() => {}}
+            validateLevel={() => false}
             levelId={level.id}
           />
         </div>
