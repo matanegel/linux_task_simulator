@@ -1,8 +1,39 @@
 import { useState } from 'react';
-import { Target, Wrench, ChevronRight, Send, ShieldCheck } from 'lucide-react';
+import { Target, Wrench, ChevronRight, Send, ShieldCheck, ExternalLink } from 'lucide-react';
+
+const MAN_PAGE_URLS: Record<string, string> = {
+  'ls': 'https://man7.org/linux/man-pages/man1/ls.1.html',
+  'cat': 'https://man7.org/linux/man-pages/man1/cat.1.html',
+  'cd': 'https://man7.org/linux/man-pages/man1/cd.1p.html',
+  'pwd': 'https://man7.org/linux/man-pages/man1/pwd.1.html',
+  'grep': 'https://man7.org/linux/man-pages/man1/grep.1.html',
+  'chmod': 'https://man7.org/linux/man-pages/man1/chmod.1.html',
+  'sort': 'https://man7.org/linux/man-pages/man1/sort.1.html',
+  'uniq': 'https://man7.org/linux/man-pages/man1/uniq.1.html',
+  'tail': 'https://man7.org/linux/man-pages/man1/tail.1.html',
+  'head': 'https://man7.org/linux/man-pages/man1/head.1.html',
+  'wc': 'https://man7.org/linux/man-pages/man1/wc.1.html',
+  'find': 'https://man7.org/linux/man-pages/man1/find.1.html',
+  'mv': 'https://man7.org/linux/man-pages/man1/mv.1.html',
+  'cp': 'https://man7.org/linux/man-pages/man1/cp.1.html',
+  'rm': 'https://man7.org/linux/man-pages/man1/rm.1.html',
+  'mkdir': 'https://man7.org/linux/man-pages/man1/mkdir.1.html',
+  'touch': 'https://man7.org/linux/man-pages/man1/touch.1.html',
+  'echo': 'https://man7.org/linux/man-pages/man1/echo.1.html',
+  'diff': 'https://man7.org/linux/man-pages/man1/diff.1.html',
+  'cut': 'https://man7.org/linux/man-pages/man1/cut.1.html',
+  'tr': 'https://man7.org/linux/man-pages/man1/tr.1.html',
+};
+
+function getManUrl(tool: string): string | null {
+  // Extract base command (e.g., "ls -l" → "ls")
+  const base = tool.split(/\s+/)[0].replace('./', '');
+  return MAN_PAGE_URLS[base] || null;
+}
 
 interface MissionBriefingProps {
   levelId: number;
+  totalLevels: number;
   title: string;
   subtitle: string;
   briefing: string;
@@ -11,7 +42,7 @@ interface MissionBriefingProps {
   onSubmitAnswer: (answer: string) => boolean;
 }
 
-export default function MissionBriefing({ levelId, title, subtitle, briefing, objective, toolbelt, onSubmitAnswer }: MissionBriefingProps) {
+export default function MissionBriefing({ levelId, totalLevels, title, subtitle, briefing, objective, toolbelt, onSubmitAnswer }: MissionBriefingProps) {
   const [answer, setAnswer] = useState('');
   const [error, setError] = useState(false);
 
@@ -89,16 +120,31 @@ export default function MissionBriefing({ levelId, title, subtitle, briefing, ob
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Recommended Toolbelt</h2>
         </div>
         <div className="flex flex-wrap gap-2">
-          {toolbelt.map((tool) => (
-            <span key={tool} className="toolbelt-item">{tool}</span>
-          ))}
+          {toolbelt.map((tool) => {
+            const manUrl = getManUrl(tool);
+            return manUrl ? (
+              <a
+                key={tool}
+                href={manUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="toolbelt-item inline-flex items-center gap-1.5 hover:border-primary hover:text-primary transition-colors cursor-pointer"
+              >
+                {tool}
+                <ExternalLink className="w-3 h-3 opacity-50" />
+              </a>
+            ) : (
+              <span key={tool} className="toolbelt-item">{tool}</span>
+            );
+          })}
         </div>
+        <p className="text-xs text-muted-foreground mt-2 opacity-60">Click a command to view its man page</p>
       </div>
 
       {/* Level Progress */}
       <div className="mt-auto pt-4">
-        <div className="flex gap-2">
-          {[1, 2, 3, 4].map((l) => (
+        <div className="flex gap-1">
+          {Array.from({ length: totalLevels }, (_, i) => i + 1).map((l) => (
             <div
               key={l}
               className={`h-1.5 flex-1 rounded-full transition-all ${
@@ -107,7 +153,7 @@ export default function MissionBriefing({ levelId, title, subtitle, briefing, ob
             />
           ))}
         </div>
-        <p className="text-xs text-muted-foreground mt-2 text-center">Level {levelId} of 4</p>
+        <p className="text-xs text-muted-foreground mt-2 text-center">Level {levelId} of {totalLevels}</p>
       </div>
     </div>
   );
