@@ -264,6 +264,36 @@ function cmdGrep(args: string[], ctx: CommandContext, pipedInput?: string): stri
   return lines.length ? lines.join('\n') : '';
 }
 
+function octalToPermString(octal: string, isDir: boolean): string {
+  const map: Record<string, string> = {
+    '0': '---', '1': '--x', '2': '-w-', '3': '-wx',
+    '4': 'r--', '5': 'r-x', '6': 'rw-', '7': 'rwx',
+  };
+  const digits = octal.padStart(3, '0');
+  const prefix = isDir ? 'd' : '-';
+  return prefix + (map[digits[0]] || '---') + (map[digits[1]] || '---') + (map[digits[2]] || '---');
+}
+
+function applySymbolicMode(current: string, mode: string): string {
+  const perms = current.split('');
+  // Handle +x, u+x, a+x, +r, +w, etc.
+  const match = mode.match(/^([ugoa]*)([+-])([rwx]+)$/);
+  if (!match) return current;
+  const [, who, op, bits] = match;
+  const targets = (!who || who.includes('a')) ? ['u', 'g', 'o'] : who.split('');
+  const offsets: Record<string, number> = { u: 1, g: 4, o: 7 };
+  const bitMap: Record<string, number> = { r: 0, w: 1, x: 2 };
+  for (const t of targets) {
+    const base = offsets[t];
+    if (!base) continue;
+    for (const b of bits) {
+      const idx = base + bitMap[b];
+      perms[idx] = op === '+' ? b : '-';
+    }
+  }
+  return perms.join('');
+}
+
 function cmdChmod(args: string[], ctx: CommandContext): string {
   if (args.length < 2) return 'chmod: missing operand';
   const mode = args[0];
@@ -275,10 +305,15 @@ function cmdChmod(args: string[], ctx: CommandContext): string {
   const newFs = JSON.parse(JSON.stringify(ctx.fs));
   const targetNode = getNode(newFs, path);
   if (targetNode) {
-    if (mode === '+x' || mode === '755' || mode === 'u+x') {
-      targetNode.permissions = '-rwxr-xr-x';
-    } else if (mode === '+r' || mode === '644') {
-      targetNode.permissions = '-rw-r--r--';
+    const isDir = targetNode.type === 'dir';
+    const currentPerms = targetNode.permissions || (isDir ? 'drwxr-xr-x' : '-rw-r--r--');
+    if (/^\d{3,4}$/.test(mode)) {
+      // Octal mode: take last 3 digits
+      const digits = mode.slice(-3);
+      targetNode.permissions = octalToPermString(digits, isDir);
+    } else {
+      // Symbolic mode: +x, u+x, go-w, etc.
+      targetNode.permissions = applySymbolicMode(currentPerms, mode);
     }
   }
   ctx.setFs(newFs);
