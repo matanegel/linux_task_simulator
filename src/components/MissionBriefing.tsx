@@ -44,7 +44,7 @@ interface MissionBriefingProps {
   solvedLevels: Set<number>;
 }
 
-export default function MissionBriefing({ levelId, totalLevels, title, subtitle, briefing, objective, toolbelt, onSubmitAnswer }: MissionBriefingProps) {
+export default function MissionBriefing({ levelId, totalLevels, title, subtitle, briefing, objective, toolbelt, onSubmitAnswer, isSolved, solvedLevels }: MissionBriefingProps) {
   const [answer, setAnswer] = useState('');
   const [error, setError] = useState(false);
 
