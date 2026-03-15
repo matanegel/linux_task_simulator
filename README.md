@@ -32,13 +32,10 @@ If you want to run this project locally:
 1. **Clone the repository:**
    ```bash
    git clone [https://github.com/matanegel/linux_task_simulator.git](https://github.com/matanegel/linux_task_simulator.git)
-
-2. **Install dependencies**
+   ```
+2. **Install dependencies and run**
   ```bash
   npm install
-
-3. **Start the dev server**
-  ```bash
   npm run dev
-
+  ```
   Created with lovable
