@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Target, Wrench, ChevronRight, Send, ShieldCheck, ExternalLink } from 'lucide-react';
+import { Target, Wrench, ChevronRight, Send, ShieldCheck, ExternalLink, Lock, CheckCircle2 } from 'lucide-react';
 
 const MAN_PAGE_URLS: Record<string, string> = {
   'ls': 'https://man7.org/linux/man-pages/man1/ls.1.html',
