@@ -162,12 +162,17 @@ function cmdLs(args: string[], ctx: CommandContext): string {
   const filtered = showAll ? entries : entries.filter(([name]) => !name.startsWith('.'));
 
   if (showLong) {
-    const lines = filtered.map(([name, n]) => {
+    // Pre-calculate max widths for proper column alignment
+    const rows = filtered.map(([name, n]) => {
       const perm = n.type === 'dir' ? 'drwxr-xr-x' : (n.permissions || '-rw-r--r--');
       const size = n.content?.length || 4096;
-      const type = n.type === 'dir' ? `\x1b[34m${name}/\x1b[0m` : name;
-      return `${perm}  1 recruit recruit  ${String(size).padStart(5)}  Mar 12 09:00  ${type}`;
+      const displayName = n.type === 'dir' ? `\x1b[34m${name}/\x1b[0m` : name;
+      return { perm, size, displayName };
     });
+    const maxSize = Math.max(...rows.map(r => String(r.size).length), 1);
+    const lines = rows.map(r =>
+      `${r.perm} 1 recruit recruit ${String(r.size).padStart(maxSize)} Mar 12 09:00 ${r.displayName}`
+    );
     return lines.join('\n');
   }
 
