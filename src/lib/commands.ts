@@ -722,17 +722,44 @@ function cmdDiff(args: string[], ctx: CommandContext): string {
 }
 
 function cmdCut(args: string[], ctx: CommandContext, pipedInput?: string): string {
-  const dIdx = args.indexOf('-d');
-  const delimiter = dIdx !== -1 ? args[dIdx + 1]?.replace(/['"]/g, '') || '\t' : '\t';
-  const fIdx = args.indexOf('-f');
-  const fieldStr = fIdx !== -1 ? args[fIdx + 1] : '1';
-  const fieldNum = parseInt(fieldStr || '1') - 1;
+  let delimiter = '\t';
+  let fieldStr = '1';
+  const consumed = new Set<number>();
+
+  // Parse -d and -f flags (handle -d, / -d , / -f3 / -f 3)
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (a === '-d' && i + 1 < args.length) {
+      delimiter = args[i + 1].replace(/['"]/g, '');
+      consumed.add(i); consumed.add(i + 1); i++;
+    } else if (a.startsWith('-d') && a.length > 2) {
+      delimiter = a.slice(2).replace(/['"]/g, '');
+      consumed.add(i);
+    } else if (a === '-f' && i + 1 < args.length) {
+      fieldStr = args[i + 1];
+      consumed.add(i); consumed.add(i + 1); i++;
+    } else if (a.startsWith('-f') && a.length > 2) {
+      fieldStr = a.slice(2);
+      consumed.add(i);
+    }
+  }
+
+  // Parse field numbers (support ranges like 1,3 or 2-4)
+  const fieldNums: number[] = [];
+  for (const part of fieldStr.split(',')) {
+    if (part.includes('-')) {
+      const [start, end] = part.split('-').map(Number);
+      for (let n = start; n <= end; n++) fieldNums.push(n - 1);
+    } else {
+      fieldNums.push(parseInt(part) - 1);
+    }
+  }
 
   let content: string;
   if (pipedInput !== undefined) {
     content = pipedInput;
   } else {
-    const file = args.find(a => !a.startsWith('-') && a !== delimiter && a !== fieldStr);
+    const file = args.find((a, i) => !consumed.has(i) && !a.startsWith('-'));
     if (!file) return 'cut: missing operand';
     const path = resolvePath(ctx.cwd, file);
     const node = getNode(ctx.fs, path);
@@ -741,8 +768,9 @@ function cmdCut(args: string[], ctx: CommandContext, pipedInput?: string): strin
   }
 
   return content.split('\n').map(line => {
-    const parts = line.split(delimiter);
-    return parts[fieldNum] ?? '';
+    const trimmedLine = line.trimStart();
+    const parts = trimmedLine.split(delimiter);
+    return fieldNums.map(f => parts[f] ?? '').join(delimiter);
   }).join('\n');
 }
 
