@@ -8,6 +8,7 @@ import { ChevronLeft, ChevronRight, ChevronsUpDown, Check } from 'lucide-react';
 
 export default function Index() {
   const [currentLevel, setCurrentLevel] = useState(0);
+  const [levelPickerOpen, setLevelPickerOpen] = useState(false);
   const [solvedLevels, setSolvedLevels] = useState<Set<number>>(new Set());
   const [fs, setFs] = useState<Record<string, FSNode>>(JSON.parse(JSON.stringify(levels[0].filesystem)));
   const [cwd, setCwd] = useState(levels[0].startDir);
