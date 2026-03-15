@@ -198,14 +198,27 @@ function cmdLs(args: string[], ctx: CommandContext): string {
 }
 
 function cmdCat(args: string[], ctx: CommandContext): string {
-  if (args.length === 0) return 'cat: missing operand';
+  const { parsed, error } = parseArgs(args, {
+    booleans: ['n'],
+    command: 'cat',
+  });
+  if (error) return error;
+
+  if (parsed.positional.length === 0) return 'cat: missing operand';
+  const numberLines = !!parsed.flags['n'];
   const results: string[] = [];
-  for (const arg of args) {
+  for (const arg of parsed.positional) {
     const path = resolvePath(ctx.cwd, arg);
     const node = getNode(ctx.fs, path);
     if (!node) { results.push(`cat: ${arg}: No such file or directory`); continue; }
     if (node.type === 'dir') { results.push(`cat: ${arg}: Is a directory`); continue; }
-    results.push(node.content || '');
+    const content = node.content || '';
+    if (numberLines) {
+      const lines = content.split('\n');
+      results.push(lines.map((l, i) => `     ${i + 1}\t${l}`).join('\n'));
+    } else {
+      results.push(content);
+    }
   }
   return results.join('\n');
 }
