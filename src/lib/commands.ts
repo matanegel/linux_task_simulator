@@ -427,10 +427,12 @@ function cmdSort(args: string[], ctx: CommandContext, pipedInput?: string): stri
 
   let lines = content.split('\n').filter(Boolean);
 
+  // -b: strip leading whitespace from lines before sorting AND in output
   if (ignoreLeadingBlanks) {
-    // Sort ignoring leading blanks
-    lines.sort((a, b) => a.trimStart().localeCompare(b.trimStart()));
-  } else if (numeric) {
+    lines = lines.map(l => l.trimStart());
+  }
+
+  if (numeric) {
     lines.sort((a, b) => parseInt(a) - parseInt(b));
   } else {
     lines.sort();
@@ -453,11 +455,13 @@ function cmdUniq(args: string[], _ctx: CommandContext, pipedInput?: string): str
   const content = pipedInput || '';
   const lines = content.split('\n').filter(Boolean);
 
-  // Count consecutive duplicates (like real uniq)
+  // Count consecutive duplicates (like real uniq) — compare trimmed to handle whitespace
   const groups: { line: string; count: number }[] = [];
   for (const line of lines) {
-    if (groups.length > 0 && groups[groups.length - 1].line === line) {
-      groups[groups.length - 1].count++;
+    const trimmed = line.trimStart();
+    const lastGroup = groups.length > 0 ? groups[groups.length - 1] : null;
+    if (lastGroup && lastGroup.line.trimStart() === trimmed) {
+      lastGroup.count++;
     } else {
       groups.push({ line, count: 1 });
     }
