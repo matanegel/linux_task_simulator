@@ -1,4 +1,5 @@
 import type { FSNode } from './levels';
+import { parseArgs } from './parseArgs';
 
 export interface CommandContext {
   fs: Record<string, FSNode>;
