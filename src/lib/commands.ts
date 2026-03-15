@@ -478,12 +478,16 @@ function cmdUniq(args: string[], _ctx: CommandContext, pipedInput?: string): str
 }
 
 function cmdTail(args: string[], ctx: CommandContext, pipedInput?: string): string {
-  let n = 10;
-  const nIdx = args.indexOf('-n');
-  if (nIdx !== -1 && args[nIdx + 1]) n = parseInt(args[nIdx + 1]) || 10;
+  const { parsed, error } = parseArgs(args, {
+    withValue: ['n'],
+    command: 'tail',
+  });
+  if (error) return error;
+
+  let n = parseInt(parsed.values['n'] || '10') || 10;
 
   // Handle +N syntax for tail
-  const plusArg = args.find(a => a.startsWith('+'));
+  const plusArg = parsed.positional.find(a => a.startsWith('+'));
   let fromLine = 0;
   if (plusArg) fromLine = parseInt(plusArg) - 1;
 
@@ -491,7 +495,7 @@ function cmdTail(args: string[], ctx: CommandContext, pipedInput?: string): stri
   if (pipedInput !== undefined) {
     content = pipedInput;
   } else {
-    const file = args.find(a => !a.startsWith('-') && !a.startsWith('+') && !(!isNaN(parseInt(a)) && args[args.indexOf(a) - 1] === '-n'));
+    const file = parsed.positional.find(a => !a.startsWith('+'));
     if (!file) return 'tail: missing operand';
     const path = resolvePath(ctx.cwd, file);
     const node = getNode(ctx.fs, path);
@@ -505,15 +509,19 @@ function cmdTail(args: string[], ctx: CommandContext, pipedInput?: string): stri
 }
 
 function cmdHead(args: string[], ctx: CommandContext, pipedInput?: string): string {
-  let n = 10;
-  const nIdx = args.indexOf('-n');
-  if (nIdx !== -1 && args[nIdx + 1]) n = parseInt(args[nIdx + 1]) || 10;
+  const { parsed, error } = parseArgs(args, {
+    withValue: ['n'],
+    command: 'head',
+  });
+  if (error) return error;
+
+  let n = parseInt(parsed.values['n'] || '10') || 10;
 
   let content: string;
   if (pipedInput !== undefined) {
     content = pipedInput;
   } else {
-    const file = args.find(a => !a.startsWith('-') && !(!isNaN(parseInt(a)) && args[args.indexOf(a) - 1] === '-n'));
+    const file = parsed.positional[0];
     if (!file) return 'head: missing operand';
     const path = resolvePath(ctx.cwd, file);
     const node = getNode(ctx.fs, path);
@@ -526,15 +534,21 @@ function cmdHead(args: string[], ctx: CommandContext, pipedInput?: string): stri
 }
 
 function cmdWc(args: string[], ctx: CommandContext, pipedInput?: string): string {
-  const linesOnly = args.includes('-l');
-  const wordsOnly = args.includes('-w');
+  const { parsed, error } = parseArgs(args, {
+    booleans: ['l', 'w', 'c'],
+    command: 'wc',
+  });
+  if (error) return error;
+
+  const linesOnly = !!parsed.flags['l'];
+  const wordsOnly = !!parsed.flags['w'];
 
   let content: string;
   let fileName = '';
   if (pipedInput !== undefined) {
     content = pipedInput;
   } else {
-    const file = args.find(a => !a.startsWith('-'));
+    const file = parsed.positional[0];
     if (!file) return 'wc: missing operand';
     fileName = file;
     const path = resolvePath(ctx.cwd, file);
