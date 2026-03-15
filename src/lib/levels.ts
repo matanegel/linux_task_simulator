@@ -659,7 +659,7 @@ export const levels: Level[] = [
               'recovery': {
                 type: 'dir',
                 children: {
-                  'recover.sh': { type: 'file', content: '#!/bin/bash\necho "CLEARANCE_OMEGA_7"', permissions: '-rw-------' },
+                  'recover.sh': { type: 'file', content: '#!/bin/bash\n# Emergency recovery protocol\necho "Initiating recovery sequence..."\necho "Verifying credentials..."\necho "$(decrypt_clearance --level omega)"', execOutput: 'Initiating recovery sequence...\nVerifying credentials...\nCLEARANCE_OMEGA_7', permissions: '-rw-------' },
                   'readme.txt': { type: 'file', content: 'This script outputs the final clearance code. Make it executable first.' },
                 }
               },
