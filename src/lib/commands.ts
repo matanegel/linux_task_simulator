@@ -402,26 +402,41 @@ function cmdExec(cmd: string, ctx: CommandContext): string {
 }
 
 function cmdSort(args: string[], ctx: CommandContext, pipedInput?: string): string {
-  const reverse = args.includes('-r');
-  const numeric = args.includes('-n');
+  const { parsed, error } = parseArgs(args, {
+    booleans: ['r', 'n', 'u', 'b'],
+    command: 'sort',
+  });
+  if (error) return error;
+
+  const reverse = !!parsed.flags['r'];
+  const numeric = !!parsed.flags['n'];
+  const unique = !!parsed.flags['u'];
+  const ignoreLeadingBlanks = !!parsed.flags['b'];
+
   let content: string;
   if (pipedInput !== undefined) {
     content = pipedInput;
   } else {
-    const file = args.find(a => !a.startsWith('-'));
+    const file = parsed.positional[0];
     if (!file) return 'sort: missing operand';
     const path = resolvePath(ctx.cwd, file);
     const node = getNode(ctx.fs, path);
     if (!node || node.type !== 'file') return `sort: ${file}: No such file or directory`;
     content = node.content || '';
   }
-  const lines = content.split('\n').filter(Boolean);
-  if (numeric) {
+
+  let lines = content.split('\n').filter(Boolean);
+
+  if (ignoreLeadingBlanks) {
+    // Sort ignoring leading blanks
+    lines.sort((a, b) => a.trimStart().localeCompare(b.trimStart()));
+  } else if (numeric) {
     lines.sort((a, b) => parseInt(a) - parseInt(b));
   } else {
     lines.sort();
   }
   if (reverse) lines.reverse();
+  if (unique) lines = [...new Set(lines)];
   return lines.join('\n');
 }
 
