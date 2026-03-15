@@ -40,6 +40,8 @@ interface MissionBriefingProps {
   objective: string;
   toolbelt: string[];
   onSubmitAnswer: (answer: string) => boolean;
+  isSolved: boolean;
+  solvedLevels: Set<number>;
 }
 
 export default function MissionBriefing({ levelId, totalLevels, title, subtitle, briefing, objective, toolbelt, onSubmitAnswer }: MissionBriefingProps) {
