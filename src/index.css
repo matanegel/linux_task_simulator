@@ -143,4 +143,14 @@
 
 .xterm {
   padding: 12px;
+  text-align: left;
+  width: 100%;
+}
+
+.xterm-screen,
+.xterm-rows {
+  text-align: left;
+  white-space: pre;
+  font-family: 'JetBrains Mono', monospace;
+  width: 100% !important;
 }
