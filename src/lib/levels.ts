@@ -236,7 +236,7 @@ export const levels: Level[] = [
       '/': {
         type: 'dir',
         children: {
-          'deploy.sh': { type: 'file', content: '#!/bin/bash\necho "TOKEN_8f3a9c_DEPLOY"', permissions: '-rw-r--r--' },
+          'deploy.sh': { type: 'file', content: '#!/bin/bash\n# Deploy automation script\nSOURCE="/opt/builds/latest"\nTARGET="/var/www/prod"\necho "Deploying $SOURCE -> $TARGET..."\necho "Validating checksums..."\necho "$(generate_token --scope deploy)"', execOutput: 'Deploying /opt/builds/latest -> /var/www/prod...\nValidating checksums...\nTOKEN_8f3a9c_DEPLOY', permissions: '-rw-r--r--' },
           'rollback.sh': { type: 'file', content: '#!/bin/bash\necho "Rolling back..."', permissions: '-rw-r--r--' },
           'README.md': { type: 'file', content: 'Run deploy.sh to get the deployment token.' },
         }
