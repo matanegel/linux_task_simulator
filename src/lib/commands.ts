@@ -441,32 +441,40 @@ function cmdSort(args: string[], ctx: CommandContext, pipedInput?: string): stri
 }
 
 function cmdUniq(args: string[], _ctx: CommandContext, pipedInput?: string): string {
-  const showUnique = args.includes('-u');
-  const showCount = args.includes('-c');
+  const { parsed, error } = parseArgs(args, {
+    booleans: ['u', 'd', 'c'],
+    command: 'uniq',
+  });
+  if (error) return error;
+
+  const showUnique = !!parsed.flags['u'];
+  const showDuplicates = !!parsed.flags['d'];
+  const showCount = !!parsed.flags['c'];
   const content = pipedInput || '';
   const lines = content.split('\n').filter(Boolean);
 
+  // Count consecutive duplicates (like real uniq)
+  const groups: { line: string; count: number }[] = [];
+  for (const line of lines) {
+    if (groups.length > 0 && groups[groups.length - 1].line === line) {
+      groups[groups.length - 1].count++;
+    } else {
+      groups.push({ line, count: 1 });
+    }
+  }
+
+  let filtered = groups;
   if (showUnique) {
-    const counts = new Map<string, number>();
-    for (const line of lines) counts.set(line, (counts.get(line) || 0) + 1);
-    return Array.from(counts.entries()).filter(([, c]) => c === 1).map(([l]) => l).join('\n');
+    filtered = groups.filter(g => g.count === 1);
+  } else if (showDuplicates) {
+    filtered = groups.filter(g => g.count > 1);
   }
 
   if (showCount) {
-    const counts = new Map<string, number>();
-    const order: string[] = [];
-    for (const line of lines) {
-      if (!counts.has(line)) order.push(line);
-      counts.set(line, (counts.get(line) || 0) + 1);
-    }
-    return order.map(l => `      ${counts.get(l)} ${l}`).join('\n');
+    return filtered.map(g => `      ${g.count} ${g.line}`).join('\n');
   }
 
-  const result: string[] = [];
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i] !== lines[i - 1]) result.push(lines[i]);
-  }
-  return result.join('\n');
+  return filtered.map(g => g.line).join('\n');
 }
 
 function cmdTail(args: string[], ctx: CommandContext, pipedInput?: string): string {
