@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Target, Wrench, ChevronRight, Send, ShieldCheck, ExternalLink } from 'lucide-react';
+import { Target, Wrench, ChevronRight, Send, ShieldCheck, ExternalLink, Lock, CheckCircle2 } from 'lucide-react';
 
 const MAN_PAGE_URLS: Record<string, string> = {
   'ls': 'https://man7.org/linux/man-pages/man1/ls.1.html',
@@ -40,9 +40,11 @@ interface MissionBriefingProps {
   objective: string;
   toolbelt: string[];
   onSubmitAnswer: (answer: string) => boolean;
+  isSolved: boolean;
+  solvedLevels: Set<number>;
 }
 
-export default function MissionBriefing({ levelId, totalLevels, title, subtitle, briefing, objective, toolbelt, onSubmitAnswer }: MissionBriefingProps) {
+export default function MissionBriefing({ levelId, totalLevels, title, subtitle, briefing, objective, toolbelt, onSubmitAnswer, isSolved, solvedLevels }: MissionBriefingProps) {
   const [answer, setAnswer] = useState('');
   const [error, setError] = useState(false);
 
@@ -62,7 +64,18 @@ export default function MissionBriefing({ levelId, totalLevels, title, subtitle,
     <div className="flex flex-col gap-4 h-full overflow-y-auto pr-2">
       {/* Level Header */}
       <div>
-        <p className="text-xs font-mono text-primary tracking-[0.3em] uppercase mb-1">{subtitle}</p>
+        <div className="flex items-center gap-2 mb-1">
+          <p className="text-xs font-mono text-primary tracking-[0.3em] uppercase">{subtitle}</p>
+          {isSolved ? (
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-terminal-green/15 text-terminal-green border border-terminal-green/30">
+              <CheckCircle2 className="w-3 h-3" /> Solved
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/30">
+              <Lock className="w-3 h-3" /> Locked
+            </span>
+          )}
+        </div>
         <h1 className="text-3xl font-bold text-foreground tracking-tight">{title}</h1>
       </div>
 
@@ -144,16 +157,18 @@ export default function MissionBriefing({ levelId, totalLevels, title, subtitle,
       {/* Level Progress */}
       <div className="mt-auto pt-4">
         <div className="flex gap-1">
-          {Array.from({ length: totalLevels }, (_, i) => i + 1).map((l) => (
+          {Array.from({ length: totalLevels }, (_, i) => (
             <div
-              key={l}
+              key={i}
               className={`h-1.5 flex-1 rounded-full transition-all ${
-                l < levelId ? 'bg-terminal-green' : l === levelId ? 'bg-primary animate-pulse-glow' : 'bg-secondary'
+                solvedLevels.has(i) ? 'bg-terminal-green' : i === levelId - 1 ? 'bg-primary animate-pulse-glow' : 'bg-secondary'
               }`}
             />
           ))}
         </div>
-        <p className="text-xs text-muted-foreground mt-2 text-center">Level {levelId} of {totalLevels}</p>
+        <p className="text-xs text-muted-foreground mt-2 text-center">
+          Level {levelId} of {totalLevels} · {solvedLevels.size} solved
+        </p>
       </div>
     </div>
   );

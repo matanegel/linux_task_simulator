@@ -4,9 +4,11 @@ import GameTerminal from '@/components/GameTerminal';
 import MissionBriefing from '@/components/MissionBriefing';
 import Sensei from '@/components/Sensei';
 import SuccessAnimation from '@/components/SuccessAnimation';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function Index() {
   const [currentLevel, setCurrentLevel] = useState(0);
+  const [solvedLevels, setSolvedLevels] = useState<Set<number>>(new Set());
   const [fs, setFs] = useState<Record<string, FSNode>>(JSON.parse(JSON.stringify(levels[0].filesystem)));
   const [cwd, setCwd] = useState(levels[0].startDir);
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
@@ -15,6 +17,18 @@ export default function Index() {
   const [hintIndex, setHintIndex] = useState(0);
 
   const level = levels[currentLevel];
+  const isSolved = solvedLevels.has(currentLevel);
+
+  const goToLevel = useCallback((index: number) => {
+    if (index < 0 || index >= levels.length) return;
+    setCurrentLevel(index);
+    setFs(JSON.parse(JSON.stringify(levels[index].filesystem)));
+    setCwd(levels[index].startDir);
+    setCommandHistory([]);
+    setHintIndex(0);
+    setSenseiOpen(false);
+    setShowSuccess(false);
+  }, []);
 
   const handleCommandExecuted = useCallback((cmd: string) => {
     setCommandHistory(prev => [...prev, cmd]);
@@ -27,22 +41,18 @@ export default function Index() {
 
   const handleSubmitAnswer = useCallback((answer: string): boolean => {
     if (answer.toLowerCase() === level.answer.toLowerCase()) {
+      setSolvedLevels(prev => new Set(prev).add(currentLevel));
       setShowSuccess(true);
       return true;
     }
     return false;
-  }, [level.answer]);
+  }, [level.answer, currentLevel]);
 
   const handleNextLevel = useCallback(() => {
     setShowSuccess(false);
-    const next = currentLevel + 1 >= levels.length ? 0 : currentLevel + 1;
-    setCurrentLevel(next);
-    setFs(JSON.parse(JSON.stringify(levels[next].filesystem)));
-    setCwd(levels[next].startDir);
-    setCommandHistory([]);
-    setHintIndex(0);
-    setSenseiOpen(false);
-  }, [currentLevel]);
+    const next = currentLevel + 1 >= levels.length ? currentLevel : currentLevel + 1;
+    goToLevel(next);
+  }, [currentLevel, goToLevel]);
 
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
@@ -56,10 +66,26 @@ export default function Index() {
             Linux Quest<span className="text-primary">:</span> Terminal Challenge
           </h1>
         </div>
+
+        {/* Level Navigation */}
         <div className="flex items-center gap-2">
-          <span className="text-xs font-mono text-muted-foreground px-3 py-1 rounded bg-secondary">
+          <button
+            onClick={() => goToLevel(currentLevel - 1)}
+            disabled={currentLevel === 0}
+            className="p-1.5 rounded bg-secondary border border-border text-muted-foreground hover:text-foreground hover:border-primary disabled:opacity-30 disabled:hover:border-border disabled:hover:text-muted-foreground transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <span className="text-xs font-mono text-muted-foreground px-3 py-1 rounded bg-secondary min-w-[80px] text-center">
             LVL {level.id}/{levels.length}
           </span>
+          <button
+            onClick={() => goToLevel(currentLevel + 1)}
+            disabled={currentLevel >= levels.length - 1}
+            className="p-1.5 rounded bg-secondary border border-border text-muted-foreground hover:text-foreground hover:border-primary disabled:opacity-30 disabled:hover:border-border disabled:hover:text-muted-foreground transition-colors"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
       </header>
 
@@ -76,6 +102,8 @@ export default function Index() {
             objective={level.objective}
             toolbelt={level.toolbelt}
             onSubmitAnswer={handleSubmitAnswer}
+            isSolved={isSolved}
+            solvedLevels={solvedLevels}
           />
         </div>
 
