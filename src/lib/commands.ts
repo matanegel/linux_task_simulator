@@ -427,10 +427,12 @@ function cmdSort(args: string[], ctx: CommandContext, pipedInput?: string): stri
 
   let lines = content.split('\n').filter(Boolean);
 
+  // -b: strip leading whitespace from lines before sorting AND in output
   if (ignoreLeadingBlanks) {
-    // Sort ignoring leading blanks
-    lines.sort((a, b) => a.trimStart().localeCompare(b.trimStart()));
-  } else if (numeric) {
+    lines = lines.map(l => l.trimStart());
+  }
+
+  if (numeric) {
     lines.sort((a, b) => parseInt(a) - parseInt(b));
   } else {
     lines.sort();
