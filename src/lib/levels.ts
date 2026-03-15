@@ -1,6 +1,7 @@
 export interface FSNode {
   type: 'file' | 'dir';
   content?: string;
+  execOutput?: string;
   permissions?: string;
   children?: Record<string, FSNode>;
 }
