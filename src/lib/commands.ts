@@ -151,33 +151,48 @@ function executeSingle(input: string, ctx: CommandContext, pipedInput?: string):
 }
 
 function cmdLs(args: string[], ctx: CommandContext): string {
-  const showAll = args.includes('-a');
-  const showLong = args.includes('-l');
-  const pathArg = args.find(a => !a.startsWith('-'));
+  const { parsed, error } = parseArgs(args, {
+    booleans: ['l', 'a', 'h', 't'],
+    command: 'ls',
+  });
+  if (error) return error;
+
+  const showAll = !!parsed.flags['a'];
+  const showLong = !!parsed.flags['l'];
+  const humanReadable = !!parsed.flags['h'];
+  const sortByTime = !!parsed.flags['t'];
+  const pathArg = parsed.positional[0];
   const target = pathArg ? resolvePath(ctx.cwd, pathArg) : ctx.cwd;
   const node = getNode(ctx.fs, target);
 
   if (!node || node.type !== 'dir') return `ls: cannot access '${pathArg || target}': No such file or directory`;
 
-  const entries = Object.entries(node.children || {});
-  const filtered = showAll ? entries : entries.filter(([name]) => !name.startsWith('.'));
+  let entries = Object.entries(node.children || {});
+  if (!showAll) entries = entries.filter(([name]) => !name.startsWith('.'));
+  if (sortByTime) entries.reverse(); // simulate time-sort by reversing insertion order
 
   if (showLong) {
-    // Pre-calculate max widths for proper column alignment
-    const rows = filtered.map(([name, n]) => {
+    const formatSize = (size: number) => {
+      if (!humanReadable) return String(size);
+      if (size >= 1048576) return (size / 1048576).toFixed(1) + 'M';
+      if (size >= 1024) return (size / 1024).toFixed(1) + 'K';
+      return String(size);
+    };
+
+    const rows = entries.map(([name, n]) => {
       const perm = n.type === 'dir' ? 'drwxr-xr-x' : (n.permissions || '-rw-r--r--');
       const size = n.content?.length || 4096;
       const displayName = n.type === 'dir' ? `\x1b[34m${name}/\x1b[0m` : name;
-      return { perm, size, displayName };
+      return { perm, size: formatSize(size), displayName };
     });
-    const maxSize = Math.max(...rows.map(r => String(r.size).length), 1);
+    const maxSize = Math.max(...rows.map(r => r.size.length), 1);
     const lines = rows.map(r =>
-      `${r.perm} 1 recruit recruit ${String(r.size).padStart(maxSize)} Mar 12 09:00 ${r.displayName}`
+      `${r.perm} 1 recruit recruit ${r.size.padStart(maxSize)} Mar 12 09:00 ${r.displayName}`
     );
     return lines.join('\n');
   }
 
-  return filtered.map(([name, n]) =>
+  return entries.map(([name, n]) =>
     n.type === 'dir' ? `\x1b[34m${name}/\x1b[0m` : name
   ).join('  ');
 }
