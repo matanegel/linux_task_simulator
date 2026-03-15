@@ -31,7 +31,7 @@ If you want to run this project locally:
 
 1. **Clone the repository:**
    ```bash
-   git clone <YOUR_GIT_URL>
+   git clone https://github.com/matanegel/linux_task_simulator.git
 
 2. **Install dependencies**
   ```bash
