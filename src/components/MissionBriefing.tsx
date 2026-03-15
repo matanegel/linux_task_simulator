@@ -64,7 +64,18 @@ export default function MissionBriefing({ levelId, totalLevels, title, subtitle,
     <div className="flex flex-col gap-4 h-full overflow-y-auto pr-2">
       {/* Level Header */}
       <div>
-        <p className="text-xs font-mono text-primary tracking-[0.3em] uppercase mb-1">{subtitle}</p>
+        <div className="flex items-center gap-2 mb-1">
+          <p className="text-xs font-mono text-primary tracking-[0.3em] uppercase">{subtitle}</p>
+          {isSolved ? (
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-terminal-green/15 text-terminal-green border border-terminal-green/30">
+              <CheckCircle2 className="w-3 h-3" /> Solved
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/30">
+              <Lock className="w-3 h-3" /> Locked
+            </span>
+          )}
+        </div>
         <h1 className="text-3xl font-bold text-foreground tracking-tight">{title}</h1>
       </div>
 
