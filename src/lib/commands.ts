@@ -234,22 +234,50 @@ function cmdCd(args: string[], ctx: CommandContext): string {
 }
 
 function cmdGrep(args: string[], ctx: CommandContext, pipedInput?: string): string {
-  const recursive = args.includes('-r') || args.includes('-R');
-  const ignoreCase = args.includes('-i');
-  const filtered = args.filter(a => !a.startsWith('-'));
-  const pattern = filtered[0];
+  const { parsed, error } = parseArgs(args, {
+    booleans: ['r', 'R', 'i', 'v', 'n'],
+    command: 'grep',
+  });
+  if (error) return error;
+
+  const recursive = !!parsed.flags['r'] || !!parsed.flags['R'];
+  const ignoreCase = !!parsed.flags['i'];
+  const invert = !!parsed.flags['v'];
+  const showLineNums = !!parsed.flags['n'];
+  const pattern = parsed.positional[0];
   if (!pattern) return 'grep: missing pattern';
 
-  const matchFn = (line: string) => ignoreCase
-    ? line.toLowerCase().includes(pattern.toLowerCase())
-    : line.includes(pattern);
+  const matchFn = (line: string) => {
+    const matches = ignoreCase
+      ? line.toLowerCase().includes(pattern.toLowerCase())
+      : line.includes(pattern);
+    return invert ? !matches : matches;
+  };
+
+  const formatLines = (lines: string[], content: string, prefix?: string) => {
+    const allLines = content.split('\n');
+    const result: string[] = [];
+    for (const line of lines) {
+      if (showLineNums) {
+        const lineNum = allLines.indexOf(line) + 1;
+        const p = prefix ? `${prefix}:` : '';
+        result.push(`${p}${lineNum}:${line}`);
+      } else if (prefix) {
+        result.push(`${prefix}:${line}`);
+      } else {
+        result.push(line);
+      }
+    }
+    return result;
+  };
 
   if (pipedInput !== undefined) {
     const lines = pipedInput.split('\n').filter(matchFn);
-    return lines.length ? lines.join('\n') : '';
+    if (!lines.length) return '';
+    return formatLines(lines, pipedInput).join('\n');
   }
 
-  const target = filtered[1] || '.';
+  const target = parsed.positional[1] || '.';
 
   if (recursive) {
     const results: string[] = [];
@@ -260,7 +288,7 @@ function cmdGrep(args: string[], ctx: CommandContext, pipedInput?: string): stri
         const fullPath = dirPath === '/' ? `/${name}` : `${dirPath}/${name}`;
         if (node.type === 'file' && node.content) {
           const matching = node.content.split('\n').filter(matchFn);
-          matching.forEach(l => results.push(`\x1b[35m${fullPath}\x1b[0m:${l}`));
+          results.push(...formatLines(matching, node.content, `\x1b[35m${fullPath}\x1b[0m`));
         } else if (node.type === 'dir') {
           searchDir(fullPath);
         }
@@ -279,7 +307,7 @@ function cmdGrep(args: string[], ctx: CommandContext, pipedInput?: string): stri
       for (const [name, node] of Object.entries(dirNode.children)) {
         if (node.type === 'file' && node.content) {
           const matching = node.content.split('\n').filter(matchFn);
-          matching.forEach(l => results.push(`\x1b[35m${name}\x1b[0m:${l}`));
+          results.push(...formatLines(matching, node.content, `\x1b[35m${name}\x1b[0m`));
         }
       }
     }
@@ -290,7 +318,8 @@ function cmdGrep(args: string[], ctx: CommandContext, pipedInput?: string): stri
   const node = getNode(ctx.fs, filePath);
   if (!node || node.type !== 'file') return `grep: ${target}: No such file or directory`;
   const lines = (node.content || '').split('\n').filter(matchFn);
-  return lines.length ? lines.join('\n') : '';
+  if (!lines.length) return '';
+  return formatLines(lines, node.content || '').join('\n');
 }
 
 function octalToPermString(octal: string, isDir: boolean): string {
