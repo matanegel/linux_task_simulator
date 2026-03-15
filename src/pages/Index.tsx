@@ -4,7 +4,7 @@ import GameTerminal from '@/components/GameTerminal';
 import MissionBriefing from '@/components/MissionBriefing';
 import Sensei from '@/components/Sensei';
 import SuccessAnimation from '@/components/SuccessAnimation';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronsUpDown, Check } from 'lucide-react';
 
 export default function Index() {
   const [currentLevel, setCurrentLevel] = useState(0);
