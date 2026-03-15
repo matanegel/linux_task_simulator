@@ -1,4 +1,5 @@
 import type { FSNode } from './levels';
+import { parseArgs } from './parseArgs';
 
 export interface CommandContext {
   fs: Record<string, FSNode>;
@@ -150,46 +151,74 @@ function executeSingle(input: string, ctx: CommandContext, pipedInput?: string):
 }
 
 function cmdLs(args: string[], ctx: CommandContext): string {
-  const showAll = args.includes('-a');
-  const showLong = args.includes('-l');
-  const pathArg = args.find(a => !a.startsWith('-'));
+  const { parsed, error } = parseArgs(args, {
+    booleans: ['l', 'a', 'h', 't'],
+    command: 'ls',
+  });
+  if (error) return error;
+
+  const showAll = !!parsed.flags['a'];
+  const showLong = !!parsed.flags['l'];
+  const humanReadable = !!parsed.flags['h'];
+  const sortByTime = !!parsed.flags['t'];
+  const pathArg = parsed.positional[0];
   const target = pathArg ? resolvePath(ctx.cwd, pathArg) : ctx.cwd;
   const node = getNode(ctx.fs, target);
 
   if (!node || node.type !== 'dir') return `ls: cannot access '${pathArg || target}': No such file or directory`;
 
-  const entries = Object.entries(node.children || {});
-  const filtered = showAll ? entries : entries.filter(([name]) => !name.startsWith('.'));
+  let entries = Object.entries(node.children || {});
+  if (!showAll) entries = entries.filter(([name]) => !name.startsWith('.'));
+  if (sortByTime) entries.reverse(); // simulate time-sort by reversing insertion order
 
   if (showLong) {
-    // Pre-calculate max widths for proper column alignment
-    const rows = filtered.map(([name, n]) => {
+    const formatSize = (size: number) => {
+      if (!humanReadable) return String(size);
+      if (size >= 1048576) return (size / 1048576).toFixed(1) + 'M';
+      if (size >= 1024) return (size / 1024).toFixed(1) + 'K';
+      return String(size);
+    };
+
+    const rows = entries.map(([name, n]) => {
       const perm = n.type === 'dir' ? 'drwxr-xr-x' : (n.permissions || '-rw-r--r--');
       const size = n.content?.length || 4096;
       const displayName = n.type === 'dir' ? `\x1b[34m${name}/\x1b[0m` : name;
-      return { perm, size, displayName };
+      return { perm, size: formatSize(size), displayName };
     });
-    const maxSize = Math.max(...rows.map(r => String(r.size).length), 1);
+    const maxSize = Math.max(...rows.map(r => r.size.length), 1);
     const lines = rows.map(r =>
-      `${r.perm} 1 recruit recruit ${String(r.size).padStart(maxSize)} Mar 12 09:00 ${r.displayName}`
+      `${r.perm} 1 recruit recruit ${r.size.padStart(maxSize)} Mar 12 09:00 ${r.displayName}`
     );
     return lines.join('\n');
   }
 
-  return filtered.map(([name, n]) =>
+  return entries.map(([name, n]) =>
     n.type === 'dir' ? `\x1b[34m${name}/\x1b[0m` : name
   ).join('  ');
 }
 
 function cmdCat(args: string[], ctx: CommandContext): string {
-  if (args.length === 0) return 'cat: missing operand';
+  const { parsed, error } = parseArgs(args, {
+    booleans: ['n'],
+    command: 'cat',
+  });
+  if (error) return error;
+
+  if (parsed.positional.length === 0) return 'cat: missing operand';
+  const numberLines = !!parsed.flags['n'];
   const results: string[] = [];
-  for (const arg of args) {
+  for (const arg of parsed.positional) {
     const path = resolvePath(ctx.cwd, arg);
     const node = getNode(ctx.fs, path);
     if (!node) { results.push(`cat: ${arg}: No such file or directory`); continue; }
     if (node.type === 'dir') { results.push(`cat: ${arg}: Is a directory`); continue; }
-    results.push(node.content || '');
+    const content = node.content || '';
+    if (numberLines) {
+      const lines = content.split('\n');
+      results.push(lines.map((l, i) => `     ${i + 1}\t${l}`).join('\n'));
+    } else {
+      results.push(content);
+    }
   }
   return results.join('\n');
 }
@@ -205,22 +234,50 @@ function cmdCd(args: string[], ctx: CommandContext): string {
 }
 
 function cmdGrep(args: string[], ctx: CommandContext, pipedInput?: string): string {
-  const recursive = args.includes('-r') || args.includes('-R');
-  const ignoreCase = args.includes('-i');
-  const filtered = args.filter(a => !a.startsWith('-'));
-  const pattern = filtered[0];
+  const { parsed, error } = parseArgs(args, {
+    booleans: ['r', 'R', 'i', 'v', 'n'],
+    command: 'grep',
+  });
+  if (error) return error;
+
+  const recursive = !!parsed.flags['r'] || !!parsed.flags['R'];
+  const ignoreCase = !!parsed.flags['i'];
+  const invert = !!parsed.flags['v'];
+  const showLineNums = !!parsed.flags['n'];
+  const pattern = parsed.positional[0];
   if (!pattern) return 'grep: missing pattern';
 
-  const matchFn = (line: string) => ignoreCase
-    ? line.toLowerCase().includes(pattern.toLowerCase())
-    : line.includes(pattern);
+  const matchFn = (line: string) => {
+    const matches = ignoreCase
+      ? line.toLowerCase().includes(pattern.toLowerCase())
+      : line.includes(pattern);
+    return invert ? !matches : matches;
+  };
+
+  const formatLines = (lines: string[], content: string, prefix?: string) => {
+    const allLines = content.split('\n');
+    const result: string[] = [];
+    for (const line of lines) {
+      if (showLineNums) {
+        const lineNum = allLines.indexOf(line) + 1;
+        const p = prefix ? `${prefix}:` : '';
+        result.push(`${p}${lineNum}:${line}`);
+      } else if (prefix) {
+        result.push(`${prefix}:${line}`);
+      } else {
+        result.push(line);
+      }
+    }
+    return result;
+  };
 
   if (pipedInput !== undefined) {
     const lines = pipedInput.split('\n').filter(matchFn);
-    return lines.length ? lines.join('\n') : '';
+    if (!lines.length) return '';
+    return formatLines(lines, pipedInput).join('\n');
   }
 
-  const target = filtered[1] || '.';
+  const target = parsed.positional[1] || '.';
 
   if (recursive) {
     const results: string[] = [];
@@ -231,7 +288,7 @@ function cmdGrep(args: string[], ctx: CommandContext, pipedInput?: string): stri
         const fullPath = dirPath === '/' ? `/${name}` : `${dirPath}/${name}`;
         if (node.type === 'file' && node.content) {
           const matching = node.content.split('\n').filter(matchFn);
-          matching.forEach(l => results.push(`\x1b[35m${fullPath}\x1b[0m:${l}`));
+          results.push(...formatLines(matching, node.content, `\x1b[35m${fullPath}\x1b[0m`));
         } else if (node.type === 'dir') {
           searchDir(fullPath);
         }
@@ -250,7 +307,7 @@ function cmdGrep(args: string[], ctx: CommandContext, pipedInput?: string): stri
       for (const [name, node] of Object.entries(dirNode.children)) {
         if (node.type === 'file' && node.content) {
           const matching = node.content.split('\n').filter(matchFn);
-          matching.forEach(l => results.push(`\x1b[35m${name}\x1b[0m:${l}`));
+          results.push(...formatLines(matching, node.content, `\x1b[35m${name}\x1b[0m`));
         }
       }
     }
@@ -261,7 +318,8 @@ function cmdGrep(args: string[], ctx: CommandContext, pipedInput?: string): stri
   const node = getNode(ctx.fs, filePath);
   if (!node || node.type !== 'file') return `grep: ${target}: No such file or directory`;
   const lines = (node.content || '').split('\n').filter(matchFn);
-  return lines.length ? lines.join('\n') : '';
+  if (!lines.length) return '';
+  return formatLines(lines, node.content || '').join('\n');
 }
 
 function octalToPermString(octal: string, isDir: boolean): string {
@@ -344,65 +402,92 @@ function cmdExec(cmd: string, ctx: CommandContext): string {
 }
 
 function cmdSort(args: string[], ctx: CommandContext, pipedInput?: string): string {
-  const reverse = args.includes('-r');
-  const numeric = args.includes('-n');
+  const { parsed, error } = parseArgs(args, {
+    booleans: ['r', 'n', 'u', 'b'],
+    command: 'sort',
+  });
+  if (error) return error;
+
+  const reverse = !!parsed.flags['r'];
+  const numeric = !!parsed.flags['n'];
+  const unique = !!parsed.flags['u'];
+  const ignoreLeadingBlanks = !!parsed.flags['b'];
+
   let content: string;
   if (pipedInput !== undefined) {
     content = pipedInput;
   } else {
-    const file = args.find(a => !a.startsWith('-'));
+    const file = parsed.positional[0];
     if (!file) return 'sort: missing operand';
     const path = resolvePath(ctx.cwd, file);
     const node = getNode(ctx.fs, path);
     if (!node || node.type !== 'file') return `sort: ${file}: No such file or directory`;
     content = node.content || '';
   }
-  const lines = content.split('\n').filter(Boolean);
-  if (numeric) {
+
+  let lines = content.split('\n').filter(Boolean);
+
+  if (ignoreLeadingBlanks) {
+    // Sort ignoring leading blanks
+    lines.sort((a, b) => a.trimStart().localeCompare(b.trimStart()));
+  } else if (numeric) {
     lines.sort((a, b) => parseInt(a) - parseInt(b));
   } else {
     lines.sort();
   }
   if (reverse) lines.reverse();
+  if (unique) lines = [...new Set(lines)];
   return lines.join('\n');
 }
 
 function cmdUniq(args: string[], _ctx: CommandContext, pipedInput?: string): string {
-  const showUnique = args.includes('-u');
-  const showCount = args.includes('-c');
+  const { parsed, error } = parseArgs(args, {
+    booleans: ['u', 'd', 'c'],
+    command: 'uniq',
+  });
+  if (error) return error;
+
+  const showUnique = !!parsed.flags['u'];
+  const showDuplicates = !!parsed.flags['d'];
+  const showCount = !!parsed.flags['c'];
   const content = pipedInput || '';
   const lines = content.split('\n').filter(Boolean);
 
+  // Count consecutive duplicates (like real uniq)
+  const groups: { line: string; count: number }[] = [];
+  for (const line of lines) {
+    if (groups.length > 0 && groups[groups.length - 1].line === line) {
+      groups[groups.length - 1].count++;
+    } else {
+      groups.push({ line, count: 1 });
+    }
+  }
+
+  let filtered = groups;
   if (showUnique) {
-    const counts = new Map<string, number>();
-    for (const line of lines) counts.set(line, (counts.get(line) || 0) + 1);
-    return Array.from(counts.entries()).filter(([, c]) => c === 1).map(([l]) => l).join('\n');
+    filtered = groups.filter(g => g.count === 1);
+  } else if (showDuplicates) {
+    filtered = groups.filter(g => g.count > 1);
   }
 
   if (showCount) {
-    const counts = new Map<string, number>();
-    const order: string[] = [];
-    for (const line of lines) {
-      if (!counts.has(line)) order.push(line);
-      counts.set(line, (counts.get(line) || 0) + 1);
-    }
-    return order.map(l => `      ${counts.get(l)} ${l}`).join('\n');
+    return filtered.map(g => `      ${g.count} ${g.line}`).join('\n');
   }
 
-  const result: string[] = [];
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i] !== lines[i - 1]) result.push(lines[i]);
-  }
-  return result.join('\n');
+  return filtered.map(g => g.line).join('\n');
 }
 
 function cmdTail(args: string[], ctx: CommandContext, pipedInput?: string): string {
-  let n = 10;
-  const nIdx = args.indexOf('-n');
-  if (nIdx !== -1 && args[nIdx + 1]) n = parseInt(args[nIdx + 1]) || 10;
+  const { parsed, error } = parseArgs(args, {
+    withValue: ['n'],
+    command: 'tail',
+  });
+  if (error) return error;
+
+  let n = parseInt(parsed.values['n'] || '10') || 10;
 
   // Handle +N syntax for tail
-  const plusArg = args.find(a => a.startsWith('+'));
+  const plusArg = parsed.positional.find(a => a.startsWith('+'));
   let fromLine = 0;
   if (plusArg) fromLine = parseInt(plusArg) - 1;
 
@@ -410,7 +495,7 @@ function cmdTail(args: string[], ctx: CommandContext, pipedInput?: string): stri
   if (pipedInput !== undefined) {
     content = pipedInput;
   } else {
-    const file = args.find(a => !a.startsWith('-') && !a.startsWith('+') && !(!isNaN(parseInt(a)) && args[args.indexOf(a) - 1] === '-n'));
+    const file = parsed.positional.find(a => !a.startsWith('+'));
     if (!file) return 'tail: missing operand';
     const path = resolvePath(ctx.cwd, file);
     const node = getNode(ctx.fs, path);
@@ -424,15 +509,19 @@ function cmdTail(args: string[], ctx: CommandContext, pipedInput?: string): stri
 }
 
 function cmdHead(args: string[], ctx: CommandContext, pipedInput?: string): string {
-  let n = 10;
-  const nIdx = args.indexOf('-n');
-  if (nIdx !== -1 && args[nIdx + 1]) n = parseInt(args[nIdx + 1]) || 10;
+  const { parsed, error } = parseArgs(args, {
+    withValue: ['n'],
+    command: 'head',
+  });
+  if (error) return error;
+
+  let n = parseInt(parsed.values['n'] || '10') || 10;
 
   let content: string;
   if (pipedInput !== undefined) {
     content = pipedInput;
   } else {
-    const file = args.find(a => !a.startsWith('-') && !(!isNaN(parseInt(a)) && args[args.indexOf(a) - 1] === '-n'));
+    const file = parsed.positional[0];
     if (!file) return 'head: missing operand';
     const path = resolvePath(ctx.cwd, file);
     const node = getNode(ctx.fs, path);
@@ -445,15 +534,21 @@ function cmdHead(args: string[], ctx: CommandContext, pipedInput?: string): stri
 }
 
 function cmdWc(args: string[], ctx: CommandContext, pipedInput?: string): string {
-  const linesOnly = args.includes('-l');
-  const wordsOnly = args.includes('-w');
+  const { parsed, error } = parseArgs(args, {
+    booleans: ['l', 'w', 'c'],
+    command: 'wc',
+  });
+  if (error) return error;
+
+  const linesOnly = !!parsed.flags['l'];
+  const wordsOnly = !!parsed.flags['w'];
 
   let content: string;
   let fileName = '';
   if (pipedInput !== undefined) {
     content = pipedInput;
   } else {
-    const file = args.find(a => !a.startsWith('-'));
+    const file = parsed.positional[0];
     if (!file) return 'wc: missing operand';
     fileName = file;
     const path = resolvePath(ctx.cwd, file);
@@ -685,17 +780,17 @@ function getHelp(): string {
     '\x1b[1;31m║\x1b[0m  \x1b[1mLinux Quest - Available Commands\x1b[0m   \x1b[1;31m║\x1b[0m',
     '\x1b[1;31m╚══════════════════════════════════════╝\x1b[0m',
     '',
-    '  \x1b[32mls\x1b[0m [-a] [-l]     List directory contents',
-    '  \x1b[32mcat\x1b[0m <file>       Display file contents',
+    '  \x1b[32mls\x1b[0m [-laht]      List directory contents',
+    '  \x1b[32mcat\x1b[0m [-n] <file>   Display file contents',
     '  \x1b[32mcd\x1b[0m <dir>         Change directory',
     '  \x1b[32mpwd\x1b[0m              Print working directory',
-    '  \x1b[32mgrep\x1b[0m [-r] <pat>  Search for pattern',
+    '  \x1b[32mgrep\x1b[0m [-rivn] <p>  Search for pattern',
     '  \x1b[32mchmod\x1b[0m <mode> <f> Change file permissions',
-    '  \x1b[32msort\x1b[0m <file>      Sort lines',
-    '  \x1b[32muniq\x1b[0m [-u] [-c]   Filter duplicate lines',
+    '  \x1b[32msort\x1b[0m [-rnub]     Sort lines',
+    '  \x1b[32muniq\x1b[0m [-udc]      Filter duplicate lines',
     '  \x1b[32mtail\x1b[0m [-n N]      Output last N lines',
     '  \x1b[32mhead\x1b[0m [-n N]      Output first N lines',
-    '  \x1b[32mwc\x1b[0m [-l] [-w]     Count lines/words/bytes',
+    '  \x1b[32mwc\x1b[0m [-lwc]        Count lines/words/bytes',
     '  \x1b[32mfind\x1b[0m . -name X   Find files by name',
     '  \x1b[32mmv\x1b[0m <src> <dst>   Move/rename files',
     '  \x1b[32mcp\x1b[0m <src> <dst>   Copy files',
