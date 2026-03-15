@@ -1,9 +1,10 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { Terminal } from 'xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import 'xterm/css/xterm.css';
 import { executeCommand, getCompletions, type CommandContext } from '@/lib/commands';
 import type { FSNode } from '@/lib/levels';
+import { Copy, Check } from 'lucide-react';
 
 interface GameTerminalProps {
   fs: Record<string, FSNode>;
@@ -18,9 +19,20 @@ interface GameTerminalProps {
   levelId: number;
 }
 
+interface OutputBlock {
+  id: number;
+  command: string;
+  output: string;
+}
+
 const PROMPT_COLOR = '\x1b[1;31m';
 const RESET = '\x1b[0m';
 const GREEN = '\x1b[32m';
+
+// Strip ANSI escape codes for clipboard copy
+function stripAnsi(str: string): string {
+  return str.replace(/\x1b\[[0-9;]*m/g, '');
+}
 
 export default function GameTerminal({
   fs, cwd, commandHistory, onCwdChange, onFsChange,
@@ -36,6 +48,10 @@ export default function GameTerminal({
   const cwdRef = useRef(cwd);
   const fsRef = useRef(fs);
   const cmdHistoryRef = useRef<string[]>([]);
+  const blockIdRef = useRef(0);
+
+  const [outputBlocks, setOutputBlocks] = useState<OutputBlock[]>([]);
+  const [copiedId, setCopiedId] = useState<number | null>(null);
 
   cwdRef.current = cwd;
   fsRef.current = fs;
@@ -45,21 +61,28 @@ export default function GameTerminal({
     return `${PROMPT_COLOR}[recruit@linuxquest ${GREEN}${dir}${PROMPT_COLOR}]$${RESET} `;
   }, []);
 
-  const writePrompt = useCallback(() => {
-    xtermRef.current?.write('\r\n' + getPrompt());
-  }, [getPrompt]);
-
   const refreshLine = useCallback(() => {
     const term = xtermRef.current;
     if (!term) return;
     term.write('\r' + getPrompt() + inputBuffer.current + '\x1b[K');
-    // Move cursor to correct position
     const diff = inputBuffer.current.length - cursorPos.current;
     if (diff > 0) term.write(`\x1b[${diff}D`);
   }, [getPrompt]);
 
+  const copyToClipboard = useCallback(async (text: string, id: number) => {
+    try {
+      await navigator.clipboard.writeText(stripAnsi(text));
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 1500);
+    } catch {
+      // Fallback: noop
+    }
+  }, []);
+
   useEffect(() => {
     if (!termRef.current) return;
+
+    setOutputBlocks([]);
 
     const term = new Terminal({
       theme: {
@@ -91,6 +114,7 @@ export default function GameTerminal({
       cursorBlink: true,
       cursorStyle: 'block',
       scrollback: 1000,
+      rightClickSelectsWord: false,
     });
 
     const fitAddon = new FitAddon();
@@ -110,7 +134,42 @@ export default function GameTerminal({
     term.writeln('\x1b[0m');
     term.writeln('  \x1b[33mType "help" for available commands\x1b[0m');
     term.writeln('  \x1b[33mType "hint" to ask the Sensei\x1b[0m');
+    term.writeln('  \x1b[2m  Ctrl+C: copy selection | Ctrl+V: paste\x1b[0m');
     term.write('\r\n' + getPrompt());
+
+    // Handle keyboard at the DOM level for Ctrl+C/V
+    const containerEl = termRef.current;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+        const selection = term.getSelection();
+        if (selection) {
+          e.preventDefault();
+          e.stopPropagation();
+          navigator.clipboard.writeText(selection);
+          term.clearSelection();
+        } else {
+          // No selection: clear current line (like real terminal)
+          // Let xterm handle it via onData
+        }
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+        e.preventDefault();
+        e.stopPropagation();
+        navigator.clipboard.readText().then((text) => {
+          if (text) {
+            // Insert pasted text into input buffer
+            const clean = text.replace(/[\r\n]/g, '');
+            inputBuffer.current = inputBuffer.current.slice(0, cursorPos.current) + clean + inputBuffer.current.slice(cursorPos.current);
+            cursorPos.current += clean.length;
+            refreshLine();
+          }
+        }).catch(() => {});
+      }
+    };
+
+    containerEl?.addEventListener('keydown', handleKeyDown, true);
 
     term.onData((data) => {
       const code = data.charCodeAt(0);
@@ -138,13 +197,16 @@ export default function GameTerminal({
 
           if (output === '__CLEAR__') {
             term.clear();
+            setOutputBlocks([]);
           } else if (output === '__HINT__') {
             onHintRequested();
           } else if (output) {
             term.writeln(output);
+            // Track output block for copy button
+            const id = ++blockIdRef.current;
+            setOutputBlocks(prev => [...prev, { id, command: cmd.trim(), output }]);
           }
 
-          // Check validation after command
           setTimeout(() => {
             if (validateLevel(fsRef.current, [...commandHistory, cmd.trim()], cwdRef.current)) {
               onLevelComplete();
@@ -206,11 +268,13 @@ export default function GameTerminal({
           cursorPos.current++;
           term.write(data);
         }
-      } else if (code === 3) { // Ctrl+C
+      } else if (code === 3) { // Ctrl+C from xterm
+        // If we reach here, no selection was present (handled at DOM level)
         inputBuffer.current = '';
         cursorPos.current = 0;
-        term.write('^C');
         term.write('\r\n' + getPrompt());
+      } else if (code === 22) { // Ctrl+V from xterm — ignore, handled at DOM level
+        // noop
       } else if (code >= 32) { // Printable
         inputBuffer.current = inputBuffer.current.slice(0, cursorPos.current) + data + inputBuffer.current.slice(cursorPos.current);
         cursorPos.current += data.length;
@@ -224,6 +288,7 @@ export default function GameTerminal({
     window.addEventListener('resize', resizeHandler);
 
     return () => {
+      containerEl?.removeEventListener('keydown', handleKeyDown, true);
       window.removeEventListener('resize', resizeHandler);
       term.dispose();
     };
@@ -240,6 +305,27 @@ export default function GameTerminal({
         </span>
       </div>
       <div ref={termRef} className="flex-1 min-h-0" />
+
+      {/* Floating copy buttons for output blocks */}
+      {outputBlocks.length > 0 && (
+        <div className="absolute top-10 right-2 flex flex-col gap-1 z-10">
+          {outputBlocks.slice(-5).map((block) => (
+            <button
+              key={block.id}
+              onClick={() => copyToClipboard(block.output, block.id)}
+              className="flex items-center gap-1 px-2 py-1 rounded bg-secondary/80 border border-border text-muted-foreground hover:text-foreground hover:border-primary transition-colors text-[10px] font-mono backdrop-blur-sm"
+              title={`Copy output of: ${block.command}`}
+            >
+              {copiedId === block.id ? (
+                <Check className="w-3 h-3 text-terminal-green" />
+              ) : (
+                <Copy className="w-3 h-3" />
+              )}
+              <span className="max-w-[100px] truncate">{block.command}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
