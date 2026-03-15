@@ -69,7 +69,7 @@ export default function Index() {
         </div>
 
         {/* Level Navigation */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 relative">
           <button
             onClick={() => goToLevel(currentLevel - 1)}
             disabled={currentLevel === 0}
@@ -77,9 +77,33 @@ export default function Index() {
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <span className="text-xs font-mono text-muted-foreground px-3 py-1 rounded bg-secondary min-w-[80px] text-center">
-            LVL {level.id}/{levels.length}
-          </span>
+          <button
+            onClick={() => setLevelPickerOpen(prev => !prev)}
+            className="flex items-center gap-1.5 text-xs font-mono text-muted-foreground px-3 py-1.5 rounded bg-secondary border border-border hover:border-primary hover:text-foreground transition-colors min-w-[110px] justify-between"
+          >
+            <span>LVL {level.id}/{levels.length}</span>
+            <ChevronsUpDown className="w-3 h-3" />
+          </button>
+          {levelPickerOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setLevelPickerOpen(false)} />
+              <div className="absolute top-full right-1/2 translate-x-1/2 mt-2 z-50 bg-secondary border border-border rounded-lg shadow-xl py-1 max-h-[400px] overflow-y-auto w-[260px]">
+                {levels.map((l, i) => (
+                  <button
+                    key={l.id}
+                    onClick={() => { goToLevel(i); setLevelPickerOpen(false); }}
+                    className={`w-full text-left px-3 py-2 text-xs font-mono flex items-center gap-2 hover:bg-accent transition-colors ${
+                      i === currentLevel ? 'text-primary bg-primary/10' : 'text-muted-foreground'
+                    }`}
+                  >
+                    <span className="w-6 text-right shrink-0">{l.id}.</span>
+                    <span className="flex-1 truncate">{l.title}</span>
+                    {solvedLevels.has(i) && <Check className="w-3 h-3 text-terminal-green shrink-0" />}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
           <button
             onClick={() => goToLevel(currentLevel + 1)}
             disabled={currentLevel >= levels.length - 1}
