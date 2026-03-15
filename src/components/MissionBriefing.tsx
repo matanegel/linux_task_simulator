@@ -157,16 +157,18 @@ export default function MissionBriefing({ levelId, totalLevels, title, subtitle,
       {/* Level Progress */}
       <div className="mt-auto pt-4">
         <div className="flex gap-1">
-          {Array.from({ length: totalLevels }, (_, i) => i + 1).map((l) => (
+          {Array.from({ length: totalLevels }, (_, i) => (
             <div
-              key={l}
+              key={i}
               className={`h-1.5 flex-1 rounded-full transition-all ${
-                l < levelId ? 'bg-terminal-green' : l === levelId ? 'bg-primary animate-pulse-glow' : 'bg-secondary'
+                solvedLevels.has(i) ? 'bg-terminal-green' : i === levelId - 1 ? 'bg-primary animate-pulse-glow' : 'bg-secondary'
               }`}
             />
           ))}
         </div>
-        <p className="text-xs text-muted-foreground mt-2 text-center">Level {levelId} of {totalLevels}</p>
+        <p className="text-xs text-muted-foreground mt-2 text-center">
+          Level {levelId} of {totalLevels} · {solvedLevels.size} solved
+        </p>
       </div>
     </div>
   );
