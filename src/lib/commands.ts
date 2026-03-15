@@ -455,11 +455,13 @@ function cmdUniq(args: string[], _ctx: CommandContext, pipedInput?: string): str
   const content = pipedInput || '';
   const lines = content.split('\n').filter(Boolean);
 
-  // Count consecutive duplicates (like real uniq)
+  // Count consecutive duplicates (like real uniq) — compare trimmed to handle whitespace
   const groups: { line: string; count: number }[] = [];
   for (const line of lines) {
-    if (groups.length > 0 && groups[groups.length - 1].line === line) {
-      groups[groups.length - 1].count++;
+    const trimmed = line.trimStart();
+    const lastGroup = groups.length > 0 ? groups[groups.length - 1] : null;
+    if (lastGroup && lastGroup.line.trimStart() === trimmed) {
+      lastGroup.count++;
     } else {
       groups.push({ line, count: 1 });
     }
