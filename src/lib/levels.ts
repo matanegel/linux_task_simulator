@@ -1,6 +1,7 @@
 export interface FSNode {
   type: 'file' | 'dir';
   content?: string;
+  execOutput?: string;
   permissions?: string;
   children?: Record<string, FSNode>;
 }
@@ -235,7 +236,7 @@ export const levels: Level[] = [
       '/': {
         type: 'dir',
         children: {
-          'deploy.sh': { type: 'file', content: '#!/bin/bash\necho "TOKEN_8f3a9c_DEPLOY"', permissions: '-rw-r--r--' },
+          'deploy.sh': { type: 'file', content: '#!/bin/bash\n# Deploy automation script\nSOURCE="/opt/builds/latest"\nTARGET="/var/www/prod"\necho "Deploying $SOURCE -> $TARGET..."\necho "Validating checksums..."\necho "$(generate_token --scope deploy)"', execOutput: 'Deploying /opt/builds/latest -> /var/www/prod...\nValidating checksums...\nTOKEN_8f3a9c_DEPLOY', permissions: '-rw-r--r--' },
           'rollback.sh': { type: 'file', content: '#!/bin/bash\necho "Rolling back..."', permissions: '-rw-r--r--' },
           'README.md': { type: 'file', content: 'Run deploy.sh to get the deployment token.' },
         }
@@ -658,7 +659,7 @@ export const levels: Level[] = [
               'recovery': {
                 type: 'dir',
                 children: {
-                  'recover.sh': { type: 'file', content: '#!/bin/bash\necho "CLEARANCE_OMEGA_7"', permissions: '-rw-------' },
+                  'recover.sh': { type: 'file', content: '#!/bin/bash\n# Emergency recovery protocol\necho "Initiating recovery sequence..."\necho "Verifying credentials..."\necho "$(decrypt_clearance --level omega)"', execOutput: 'Initiating recovery sequence...\nVerifying credentials...\nCLEARANCE_OMEGA_7', permissions: '-rw-------' },
                   'readme.txt': { type: 'file', content: 'This script outputs the final clearance code. Make it executable first.' },
                 }
               },

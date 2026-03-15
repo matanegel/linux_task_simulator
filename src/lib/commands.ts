@@ -328,11 +328,14 @@ function cmdExec(cmd: string, ctx: CommandContext): string {
   if (node.type !== 'file') return `bash: ${cmd}: Is a directory`;
   if (!node.permissions?.includes('x')) return `bash: ${cmd}: Permission denied`;
 
+  // Use execOutput if available (keeps secrets hidden from cat)
+  if (node.execOutput) return node.execOutput;
+
   const content = node.content || '';
   const lines = content.split('\n');
   const output: string[] = [];
   for (const line of lines) {
-    if (line.startsWith('#!')) continue;
+    if (line.startsWith('#!') || line.startsWith('#')) continue;
     if (line.startsWith('echo ')) {
       output.push(line.slice(5).replace(/"/g, ''));
     }
