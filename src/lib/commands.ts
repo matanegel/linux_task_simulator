@@ -442,7 +442,7 @@ function cmdSort(args: string[], ctx: CommandContext, pipedInput?: string): stri
   return lines.join('\n');
 }
 
-function cmdUniq(args: string[], _ctx: CommandContext, pipedInput?: string): string {
+function cmdUniq(args: string[], ctx: CommandContext, pipedInput?: string): string {
   const { parsed, error } = parseArgs(args, {
     booleans: ['u', 'd', 'c'],
     command: 'uniq',
