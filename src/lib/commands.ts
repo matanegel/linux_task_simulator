@@ -452,7 +452,19 @@ function cmdUniq(args: string[], _ctx: CommandContext, pipedInput?: string): str
   const showUnique = !!parsed.flags['u'];
   const showDuplicates = !!parsed.flags['d'];
   const showCount = !!parsed.flags['c'];
-  const content = pipedInput || '';
+
+  let content: string;
+  if (pipedInput !== undefined) {
+    content = pipedInput;
+  } else {
+    const file = parsed.positional[0];
+    if (!file) return 'uniq: missing operand';
+    const path = resolvePath(_ctx.cwd, file);
+    const node = getNode(_ctx.fs, path);
+    if (!node || node.type !== 'file') return `uniq: ${file}: No such file or directory`;
+    content = node.content || '';
+  }
+
   const lines = content.split('\n').filter(Boolean);
 
   // Count consecutive duplicates (like real uniq) — compare trimmed to handle whitespace
