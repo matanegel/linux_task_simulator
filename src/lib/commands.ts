@@ -459,8 +459,8 @@ function cmdUniq(args: string[], ctx: CommandContext, pipedInput?: string): stri
   } else {
     const file = parsed.positional[0];
     if (!file) return 'uniq: missing operand';
-    const path = resolvePath(_ctx.cwd, file);
-    const node = getNode(_ctx.fs, path);
+    const path = resolvePath(ctx.cwd, file);
+    const node = getNode(ctx.fs, path);
     if (!node || node.type !== 'file') return `uniq: ${file}: No such file or directory`;
     content = node.content || '';
   }
