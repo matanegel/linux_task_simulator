@@ -77,11 +77,11 @@ export function executeCommand(input: string, ctx: CommandContext): string {
   // Handle pipes
   if (trimmed.includes('|')) {
     const parts = trimmed.split('|').map(p => p.trim());
-    let lastOutput = '';
+    let lastOutput: string | undefined = undefined;
     for (const part of parts) {
       lastOutput = executeSingle(part, ctx, lastOutput);
     }
-    return lastOutput;
+    return lastOutput || '';
   }
 
   // Handle output redirection
