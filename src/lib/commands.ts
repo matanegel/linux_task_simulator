@@ -292,7 +292,8 @@ function cmdGrep(args: string[], ctx: CommandContext, pipedInput?: string): stri
     return formatLines(lines, pipedInput).join('\n');
   }
 
-  const target = parsed.positional[1] || '.';
+  const fileArgIndex = parsed.values['f'] ? 0 : 1;
+  const target = parsed.positional[fileArgIndex] || '.';
 
   if (recursive) {
     const results: string[] = [];
