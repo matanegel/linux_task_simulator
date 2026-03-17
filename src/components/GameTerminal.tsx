@@ -201,7 +201,7 @@ export default function GameTerminal({
           } else if (output === '__HINT__') {
             onHintRequested();
           } else if (output) {
-            term.writeln(output);
+            term.writeln(output.replace(/\n/g, '\r\n'));
             // Track output block for copy button
             const id = ++blockIdRef.current;
             setOutputBlocks(prev => [...prev, { id, command: cmd.trim(), output }]);
