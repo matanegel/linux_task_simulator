@@ -236,6 +236,7 @@ function cmdCd(args: string[], ctx: CommandContext): string {
 function cmdGrep(args: string[], ctx: CommandContext, pipedInput?: string): string {
   const { parsed, error } = parseArgs(args, {
     booleans: ['r', 'R', 'i', 'v', 'n'],
+    withValue: ['f'],
     command: 'grep',
   });
   if (error) return error;
@@ -244,13 +245,27 @@ function cmdGrep(args: string[], ctx: CommandContext, pipedInput?: string): stri
   const ignoreCase = !!parsed.flags['i'];
   const invert = !!parsed.flags['v'];
   const showLineNums = !!parsed.flags['n'];
-  const pattern = parsed.positional[0];
-  if (!pattern) return 'grep: missing pattern';
+
+  // -f FILE: read patterns from file
+  let patterns: string[] = [];
+  if (parsed.values['f']) {
+    const patFile = resolvePath(ctx.cwd, parsed.values['f']);
+    const patNode = getNode(ctx.fs, patFile);
+    if (!patNode || patNode.type !== 'file') return `grep: ${parsed.values['f']}: No such file or directory`;
+    patterns = (patNode.content || '').split('\n').filter(p => p.length > 0);
+    if (!patterns.length) return 'grep: no patterns found in file';
+  } else {
+    const pattern = parsed.positional[0];
+    if (!pattern) return 'grep: missing pattern';
+    patterns = [pattern];
+  }
 
   const matchFn = (line: string) => {
-    const matches = ignoreCase
-      ? line.toLowerCase().includes(pattern.toLowerCase())
-      : line.includes(pattern);
+    const matches = patterns.some(p =>
+      ignoreCase
+        ? line.toLowerCase().includes(p.toLowerCase())
+        : line.includes(p)
+    );
     return invert ? !matches : matches;
   };
 
@@ -277,7 +292,8 @@ function cmdGrep(args: string[], ctx: CommandContext, pipedInput?: string): stri
     return formatLines(lines, pipedInput).join('\n');
   }
 
-  const target = parsed.positional[1] || '.';
+  const fileArgIndex = parsed.values['f'] ? 0 : 1;
+  const target = parsed.positional[fileArgIndex] || '.';
 
   if (recursive) {
     const results: string[] = [];

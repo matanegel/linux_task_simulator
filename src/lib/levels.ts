@@ -666,11 +666,11 @@ export const levels: Level[] = [
     briefing: "A blocklist contains IPs that should NOT access the system. But you need to find which IPs in the access log are NOT on the blocklist. Use 'grep -v' (invert match) combined with '-i' to filter them out.",
     objective: "Find the IP in 'access.log' that does NOT appear in 'blocklist.txt'. Submit that IP address.",
     answer: "10.20.30.40",
-    toolbelt: ["grep -v", "grep -i", "cat", "sort"],
+    toolbelt: ["grep -v", "grep -f", "grep -i", "cat", "sort"],
     hints: [
       "'grep -v' shows lines that do NOT match the pattern…",
       "First check what IPs are blocked with 'cat blocklist.txt'.",
-      "Then use grep -v with each blocked IP, or check each access.log IP against the blocklist.",
+      "Then use grep -v with each blocked IP, or look into the '-f' flag — 'grep -vf blocklist.txt access.log' reads all patterns from a file at once!",
     ],
     filesystem: {
       '/': {
