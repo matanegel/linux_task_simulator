@@ -8,6 +8,7 @@ export interface FSNode {
 
 export interface Level {
   id: number;
+  stage: number;
   title: string;
   subtitle: string;
   briefing: string;
