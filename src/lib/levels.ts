@@ -663,8 +663,8 @@ export const levels: Level[] = [
     id: 22,
     title: "Reverse Lookup",
     subtitle: "Stage 5B — Flag Mastery",
-    briefing: "A blocklist contains IPs that should NOT access the system. But you need to find which IPs in the access log are NOT on the blocklist. Use 'grep -v' (invert match) combined with '-i' to filter them out.",
-    objective: "Find the IP in 'access.log' that does NOT appear in 'blocklist.txt'. Submit that IP address.",
+    briefing: "A blocklist contains IPs that should NOT access the system. But you need to find which IPs in the access log are NOT on the blocklist. Check the man page for 'grep' — there are flags that can invert matching and read patterns from a file.",
+    objective: "Find the IP in 'access.log' that is NOT blocked. Submit that IP address.",
     answer: "10.20.30.40",
     toolbelt: ["grep -v", "grep -f", "grep -i", "cat", "sort"],
     hints: [
