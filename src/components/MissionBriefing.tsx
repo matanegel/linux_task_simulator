@@ -53,9 +53,13 @@ interface MissionBriefingProps {
   onSubmitAnswer: (answer: string) => boolean;
   isSolved: boolean;
   solvedLevels: Set<number>;
+  stage: number;
+  stageName: string;
+  stageSolvedCount: number;
+  stageTotalCount: number;
 }
 
-export default function MissionBriefing({ levelId, totalLevels, title, subtitle, briefing, objective, toolbelt, onSubmitAnswer, isSolved, solvedLevels }: MissionBriefingProps) {
+export default function MissionBriefing({ levelId, totalLevels, title, subtitle, briefing, objective, toolbelt, onSubmitAnswer, isSolved, solvedLevels, stage, stageName, stageSolvedCount, stageTotalCount }: MissionBriefingProps) {
   const [answer, setAnswer] = useState('');
   const [error, setError] = useState(false);
 
