@@ -614,9 +614,9 @@ export const levels: Level[] = [
     answer: "AUDIT_P4SS_2024",
     toolbelt: ["ls -la", "cat", "ls -lh"],
     hints: [
-      "Hidden files start with a dot. Use 'ls -a' or 'ls -la' to see them…",
-      "The '-l' flag shows sizes. Look for the biggest hidden file.",
-      "Try 'cat .audit_config' after identifying it.",
+      "Hidden files start with a dot. Read the man page for 'ls' — look for a flag that shows all files…",
+      "There's also a flag that shows detailed info like file sizes. Combine them to compare hidden files.",
+      "Found the right flags? Now look for the biggest hidden file and 'cat' it.",
     ],
     filesystem: {
       '/': {
