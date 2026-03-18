@@ -609,8 +609,8 @@ export const levels: Level[] = [
     id: 20,
     title: "Hidden Audit",
     subtitle: "Stage 5B — Flag Mastery",
-    briefing: "A security auditor left hidden config files scattered across the server. Use 'ls -la' to reveal them all, including their sizes. One hidden file is suspiciously large (over 200 characters). Find it and read it to discover the audit password.",
-    objective: "Use ls -la to find hidden files. Read the large hidden file and submit the audit password inside.",
+    briefing: "A security auditor left hidden config files scattered across the server. You need to find them all and figure out which one contains the audit password. Explore the right flags for 'ls' to reveal what's hidden and compare file details.",
+    objective: "Find the hidden audit config file and submit the audit password inside it.",
     answer: "AUDIT_P4SS_2024",
     toolbelt: ["ls -la", "cat", "ls -lh"],
     hints: [
