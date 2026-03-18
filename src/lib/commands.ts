@@ -142,6 +142,7 @@ function executeSingle(input: string, ctx: CommandContext, pipedInput?: string):
     case 'clear': return '__CLEAR__';
     case 'help': return getHelp();
     case 'hint': return '__HINT__';
+    case 'man': return cmdMan(args.slice(1));
     case 'whoami': return 'recruit';
     case 'date': return new Date().toUTCString();
     default:
