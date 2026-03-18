@@ -846,6 +846,403 @@ function cmdTr(args: string[], _ctx: CommandContext, pipedInput?: string): strin
   return result;
 }
 
+// ═══════════════════════════════════════════
+// Stage 2 Commands: awk, sed, tac, paste, tee, xargs, basename, dirname, rev, seq, ps
+// ═══════════════════════════════════════════
+
+function cmdAwk(args: string[], ctx: CommandContext, pipedInput?: string): string {
+  // Parse -F delimiter
+  let delimiter = /\s+/;
+  let delimStr = ' ';
+  let programIdx = 0;
+
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '-F' && i + 1 < args.length) {
+      delimStr = args[i + 1].replace(/['"]/g, '');
+      delimiter = new RegExp(delimStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+      programIdx = i + 2;
+      break;
+    } else if (args[i].startsWith("-F") && args[i].length > 2) {
+      delimStr = args[i].slice(2).replace(/['"]/g, '');
+      delimiter = new RegExp(delimStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+      programIdx = i + 1;
+      break;
+    }
+  }
+
+  // Find the awk program (in quotes)
+  let program = '';
+  const rawArgs = args.slice(programIdx);
+  // Join args and find content between quotes
+  const joined = rawArgs.join(' ');
+  const qMatch = joined.match(/^'([^']*)'(.*)$/) || joined.match(/^"([^"]*)"(.*)$/);
+  let fileArg = '';
+  if (qMatch) {
+    program = qMatch[1];
+    fileArg = qMatch[2].trim();
+  } else {
+    program = rawArgs[0] || '';
+    fileArg = rawArgs[1] || '';
+  }
+
+  if (!program) return 'awk: missing program';
+
+  // Get input
+  let content: string;
+  if (pipedInput !== undefined) {
+    content = pipedInput;
+  } else {
+    if (!fileArg) return 'awk: missing input file';
+    const path = resolvePath(ctx.cwd, fileArg);
+    const node = getNode(ctx.fs, path);
+    if (!node || node.type !== 'file') return `awk: ${fileArg}: No such file or directory`;
+    content = node.content || '';
+  }
+
+  const lines = content.split('\n');
+  const output: string[] = [];
+
+  // Parse simple awk patterns:
+  // '{print $N}' | '$N == "val" {print $M}' | '$N == val' | 'NR>1 {sum+=$N} END {print sum}' | '/pattern/'
+  
+  // Check for BEGIN/END blocks
+  let beginBlock = '';
+  let mainPattern = '';
+  let mainAction = '';
+  let endBlock = '';
+
+  const beginMatch = program.match(/BEGIN\s*\{([^}]*)\}/);
+  const endMatch = program.match(/END\s*\{([^}]*)\}/);
+  if (beginMatch) beginBlock = beginMatch[1];
+  if (endMatch) endBlock = endMatch[1];
+
+  // Remove BEGIN/END blocks to get main
+  let mainProg = program
+    .replace(/BEGIN\s*\{[^}]*\}/, '')
+    .replace(/END\s*\{[^}]*\}/, '')
+    .trim();
+
+  // Parse main: pattern {action} or just {action} or just pattern
+  const mainMatch = mainProg.match(/^([^{]*?)\s*\{([^}]*)\}\s*$/);
+  if (mainMatch) {
+    mainPattern = mainMatch[1].trim();
+    mainAction = mainMatch[2].trim();
+  } else if (mainProg.startsWith('{') && mainProg.endsWith('}')) {
+    mainAction = mainProg.slice(1, -1).trim();
+  } else if (mainProg) {
+    mainPattern = mainProg;
+    mainAction = 'print $0';
+  }
+
+  // Variables for awk execution
+  const vars: Record<string, number> = {};
+
+  const getFields = (line: string) => {
+    const fields = line.split(delimiter);
+    return ['', ...fields]; // $0 = full line at index concept
+  };
+
+  const evalExpr = (expr: string, fields: string[], fullLine: string, nr: number): string => {
+    let result = expr;
+    // Replace $0 with full line
+    result = result.replace(/\$0/g, fullLine);
+    // Replace $N with field values
+    result = result.replace(/\$(\d+)/g, (_, n) => fields[parseInt(n)] || '');
+    // Replace NR
+    result = result.replace(/\bNR\b/g, String(nr));
+    // Replace NF
+    result = result.replace(/\bNF\b/g, String(fields.length - 1));
+    // Replace variable references
+    for (const [k, v] of Object.entries(vars)) {
+      result = result.replace(new RegExp('\\b' + k + '\\b', 'g'), String(v));
+    }
+    return result;
+  };
+
+  const executeAction = (action: string, fields: string[], fullLine: string, nr: number): string | null => {
+    // Handle multiple statements separated by ;
+    const statements = action.split(';').map(s => s.trim()).filter(Boolean);
+    let printOutput: string | null = null;
+
+    for (const stmt of statements) {
+      // sum+=$N
+      const accMatch = stmt.match(/^(\w+)\s*\+=\s*\$(\d+)$/);
+      if (accMatch) {
+        const varName = accMatch[1];
+        const fieldIdx = parseInt(accMatch[2]);
+        const val = parseFloat(fields[fieldIdx] || '0');
+        vars[varName] = (vars[varName] || 0) + val;
+        continue;
+      }
+
+      // variable = expression
+      const assignMatch = stmt.match(/^(\w+)\s*=\s*(.+)$/);
+      if (assignMatch && !stmt.startsWith('print')) {
+        const varName = assignMatch[1];
+        const val = evalExpr(assignMatch[2], fields, fullLine, nr);
+        vars[varName] = parseFloat(val) || 0;
+        continue;
+      }
+
+      // print
+      if (stmt.startsWith('print')) {
+        const printExpr = stmt.replace(/^print\s*/, '');
+        if (!printExpr) {
+          printOutput = fullLine;
+        } else {
+          printOutput = evalExpr(printExpr, fields, fullLine, nr);
+        }
+      }
+    }
+    return printOutput;
+  };
+
+  const checkPattern = (pattern: string, fields: string[], fullLine: string, nr: number): boolean => {
+    if (!pattern) return true;
+    // NR>1
+    const nrMatch = pattern.match(/^NR\s*([><=!]+)\s*(\d+)$/);
+    if (nrMatch) {
+      const op = nrMatch[1];
+      const val = parseInt(nrMatch[2]);
+      if (op === '>') return nr > val;
+      if (op === '>=') return nr >= val;
+      if (op === '<') return nr < val;
+      if (op === '==') return nr === val;
+      if (op === '!=') return nr !== val;
+    }
+    // $N == "val" or $N == val
+    const fieldMatch = pattern.match(/^\$(\d+)\s*([=!<>]+)\s*"?([^"]*)"?$/);
+    if (fieldMatch) {
+      const fieldVal = fields[parseInt(fieldMatch[1])] || '';
+      const op = fieldMatch[2];
+      const cmpVal = fieldMatch[3];
+      if (op === '==' || op === '=') return fieldVal === cmpVal;
+      if (op === '!=') return fieldVal !== cmpVal;
+      if (op === '>') return parseFloat(fieldVal) > parseFloat(cmpVal);
+      if (op === '<') return parseFloat(fieldVal) < parseFloat(cmpVal);
+      if (op === '>=') return parseFloat(fieldVal) >= parseFloat(cmpVal);
+      if (op === '<=') return parseFloat(fieldVal) <= parseFloat(cmpVal);
+    }
+    // /regex/
+    const regexMatch = pattern.match(/^\/(.+)\/$/);
+    if (regexMatch) {
+      return new RegExp(regexMatch[1]).test(fullLine);
+    }
+    return true;
+  };
+
+  // Process lines
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const nr = i + 1;
+    const fields = getFields(line);
+
+    if (checkPattern(mainPattern, fields, line, nr)) {
+      if (mainAction) {
+        const result = executeAction(mainAction, fields, line, nr);
+        if (result !== null) output.push(result);
+      } else {
+        output.push(line);
+      }
+    }
+  }
+
+  // END block
+  if (endBlock) {
+    const result = executeAction(endBlock, [''], '', lines.length + 1);
+    if (result !== null) output.push(result);
+  }
+
+  return output.join('\n');
+}
+
+function cmdSed(args: string[], ctx: CommandContext, pipedInput?: string): string {
+  if (args.length === 0) return 'sed: missing script';
+
+  let script = args[0];
+  let fileArg = args[1] || '';
+  
+  // Handle quoted scripts
+  if (script.startsWith("'") || script.startsWith('"')) {
+    const quote = script[0];
+    const joined = args.join(' ');
+    const endQ = joined.indexOf(quote, 1);
+    if (endQ > 0) {
+      script = joined.substring(1, endQ);
+      fileArg = joined.substring(endQ + 1).trim();
+    }
+  }
+
+  let content: string;
+  if (pipedInput !== undefined) {
+    content = pipedInput;
+  } else {
+    if (!fileArg) return 'sed: missing input file';
+    const path = resolvePath(ctx.cwd, fileArg);
+    const node = getNode(ctx.fs, path);
+    if (!node || node.type !== 'file') return `sed: ${fileArg}: No such file or directory`;
+    content = node.content || '';
+  }
+
+  const lines = content.split('\n');
+
+  // Parse sed commands: s/old/new/[g], /pattern/d, Nd
+  // Substitution: s/old/new/g
+  const subMatch = script.match(/^s(.)(.+?)\1(.*?)\1(g?)$/);
+  if (subMatch) {
+    const [, , pattern, replacement, globalFlag] = subMatch;
+    const regex = globalFlag
+      ? new RegExp(pattern, 'g')
+      : new RegExp(pattern);
+    return lines.map(l => l.replace(regex, replacement)).join('\n');
+  }
+
+  // Delete by pattern: /pattern/d
+  const delPatternMatch = script.match(/^\/(.+)\/d$/);
+  if (delPatternMatch) {
+    const pattern = new RegExp(delPatternMatch[1]);
+    return lines.filter(l => !pattern.test(l)).join('\n');
+  }
+
+  // Delete by line number: Nd
+  const delLineMatch = script.match(/^(\d+)d$/);
+  if (delLineMatch) {
+    const lineNum = parseInt(delLineMatch[1]);
+    return lines.filter((_, i) => i + 1 !== lineNum).join('\n');
+  }
+
+  // Print specific line: Np
+  const printLineMatch = script.match(/^(\d+)p$/);
+  if (printLineMatch) {
+    const lineNum = parseInt(printLineMatch[1]);
+    return lines[lineNum - 1] || '';
+  }
+
+  return content;
+}
+
+function cmdTac(args: string[], ctx: CommandContext, pipedInput?: string): string {
+  let content: string;
+  if (pipedInput !== undefined) {
+    content = pipedInput;
+  } else {
+    if (args.length === 0) return 'tac: missing operand';
+    const path = resolvePath(ctx.cwd, args[0]);
+    const node = getNode(ctx.fs, path);
+    if (!node || node.type !== 'file') return `tac: ${args[0]}: No such file or directory`;
+    content = node.content || '';
+  }
+  return content.split('\n').reverse().join('\n');
+}
+
+function cmdPaste(args: string[], ctx: CommandContext): string {
+  const files = args.filter(a => !a.startsWith('-'));
+  if (files.length < 2) return 'paste: missing operand';
+
+  const delimiter = '\t';
+  const fileContents = files.map(f => {
+    const path = resolvePath(ctx.cwd, f);
+    const node = getNode(ctx.fs, path);
+    if (!node || node.type !== 'file') return null;
+    return (node.content || '').split('\n');
+  });
+
+  if (fileContents.some(c => c === null)) return 'paste: file not found';
+
+  const maxLines = Math.max(...fileContents.map(c => c!.length));
+  const output: string[] = [];
+  for (let i = 0; i < maxLines; i++) {
+    output.push(fileContents.map(c => c![i] || '').join(delimiter));
+  }
+  return output.join('\n');
+}
+
+function cmdTee(args: string[], ctx: CommandContext, pipedInput?: string): string {
+  if (pipedInput === undefined) return 'tee: missing input (use with pipe)';
+  const file = args.find(a => !a.startsWith('-'));
+  if (file) {
+    const path = resolvePath(ctx.cwd, file);
+    const append = args.includes('-a');
+    const existing = getNode(ctx.fs, path);
+    let content = pipedInput;
+    if (append && existing?.type === 'file') {
+      content = (existing.content || '') + '\n' + pipedInput;
+    }
+    const newFs = setNode(ctx.fs, path, { type: 'file', content });
+    ctx.setFs(newFs);
+  }
+  return pipedInput;
+}
+
+function cmdXargs(args: string[], ctx: CommandContext, pipedInput?: string): string {
+  if (pipedInput === undefined) return 'xargs: missing input (use with pipe)';
+  const items = pipedInput.split('\n').filter(Boolean);
+  
+  if (args.length === 0 || (args.length === 1 && args[0] === 'echo')) {
+    return items.join(' ');
+  }
+  
+  // xargs <cmd> — run cmd with each item
+  const cmd = args.join(' ');
+  const results: string[] = [];
+  for (const item of items) {
+    const result = executeSingle(`${cmd} ${item}`, ctx);
+    if (result) results.push(result);
+  }
+  return results.join('\n');
+}
+
+function cmdBasename(args: string[]): string {
+  if (args.length === 0) return 'basename: missing operand';
+  const path = args[0].replace(/['"]/g, '');
+  const parts = path.split('/').filter(Boolean);
+  return parts[parts.length - 1] || '/';
+}
+
+function cmdDirname(args: string[]): string {
+  if (args.length === 0) return 'dirname: missing operand';
+  const path = args[0].replace(/['"]/g, '');
+  const lastSlash = path.lastIndexOf('/');
+  if (lastSlash <= 0) return '/';
+  return path.substring(0, lastSlash);
+}
+
+function cmdRev(args: string[], ctx: CommandContext, pipedInput?: string): string {
+  let content: string;
+  if (pipedInput !== undefined) {
+    content = pipedInput;
+  } else {
+    if (args.length === 0) return 'rev: missing operand';
+    const path = resolvePath(ctx.cwd, args[0]);
+    const node = getNode(ctx.fs, path);
+    if (!node || node.type !== 'file') return `rev: ${args[0]}: No such file or directory`;
+    content = node.content || '';
+  }
+  return content.split('\n').map(l => l.split('').reverse().join('')).join('\n');
+}
+
+function cmdSeq(args: string[]): string {
+  if (args.length === 0) return 'seq: missing operand';
+  let start = 1, end = 1, step = 1;
+  if (args.length === 1) { end = parseInt(args[0]); }
+  else if (args.length === 2) { start = parseInt(args[0]); end = parseInt(args[1]); }
+  else { start = parseInt(args[0]); step = parseInt(args[1]); end = parseInt(args[2]); }
+  
+  const result: number[] = [];
+  if (step > 0) { for (let i = start; i <= end; i += step) result.push(i); }
+  else if (step < 0) { for (let i = start; i >= end; i += step) result.push(i); }
+  return result.join('\n');
+}
+
+function cmdPs(ctx: CommandContext): string {
+  // Look for .processes file in filesystem
+  const procNode = getNode(ctx.fs, '/.processes');
+  if (procNode?.type === 'file' && procNode.content) {
+    return procNode.content;
+  }
+  return 'PID  USER      CPU%  MEM%  COMMAND\n1    root      0.0   0.1   init\n245  recruit   0.1   0.3   bash';
+}
+
 function cmdMan(args: string[]): string {
   if (args.length === 0) return 'What manual page do you want?\nUsage: man <command>';
   const cmd = args[0];
