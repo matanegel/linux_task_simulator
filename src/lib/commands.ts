@@ -138,6 +138,17 @@ function executeSingle(input: string, ctx: CommandContext, pipedInput?: string):
     case 'diff': return cmdDiff(args.slice(1), ctx);
     case 'cut': return cmdCut(args.slice(1), ctx, pipedInput);
     case 'tr': return cmdTr(args.slice(1), ctx, pipedInput);
+    case 'awk': return cmdAwk(args.slice(1), ctx, pipedInput);
+    case 'sed': return cmdSed(args.slice(1), ctx, pipedInput);
+    case 'tac': return cmdTac(args.slice(1), ctx, pipedInput);
+    case 'paste': return cmdPaste(args.slice(1), ctx);
+    case 'tee': return cmdTee(args.slice(1), ctx, pipedInput);
+    case 'xargs': return cmdXargs(args.slice(1), ctx, pipedInput);
+    case 'basename': return cmdBasename(args.slice(1));
+    case 'dirname': return cmdDirname(args.slice(1));
+    case 'rev': return cmdRev(args.slice(1), ctx, pipedInput);
+    case 'seq': return cmdSeq(args.slice(1));
+    case 'ps': return cmdPs(ctx);
     case 'echo': return args.slice(1).join(' ');
     case 'clear': return '__CLEAR__';
     case 'help': return getHelp();
@@ -835,6 +846,403 @@ function cmdTr(args: string[], _ctx: CommandContext, pipedInput?: string): strin
   return result;
 }
 
+// ═══════════════════════════════════════════
+// Stage 2 Commands: awk, sed, tac, paste, tee, xargs, basename, dirname, rev, seq, ps
+// ═══════════════════════════════════════════
+
+function cmdAwk(args: string[], ctx: CommandContext, pipedInput?: string): string {
+  // Parse -F delimiter
+  let delimiter = /\s+/;
+  let delimStr = ' ';
+  let programIdx = 0;
+
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '-F' && i + 1 < args.length) {
+      delimStr = args[i + 1].replace(/['"]/g, '');
+      delimiter = new RegExp(delimStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+      programIdx = i + 2;
+      break;
+    } else if (args[i].startsWith("-F") && args[i].length > 2) {
+      delimStr = args[i].slice(2).replace(/['"]/g, '');
+      delimiter = new RegExp(delimStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+      programIdx = i + 1;
+      break;
+    }
+  }
+
+  // Find the awk program (in quotes)
+  let program = '';
+  const rawArgs = args.slice(programIdx);
+  // Join args and find content between quotes
+  const joined = rawArgs.join(' ');
+  const qMatch = joined.match(/^'([^']*)'(.*)$/) || joined.match(/^"([^"]*)"(.*)$/);
+  let fileArg = '';
+  if (qMatch) {
+    program = qMatch[1];
+    fileArg = qMatch[2].trim();
+  } else {
+    program = rawArgs[0] || '';
+    fileArg = rawArgs[1] || '';
+  }
+
+  if (!program) return 'awk: missing program';
+
+  // Get input
+  let content: string;
+  if (pipedInput !== undefined) {
+    content = pipedInput;
+  } else {
+    if (!fileArg) return 'awk: missing input file';
+    const path = resolvePath(ctx.cwd, fileArg);
+    const node = getNode(ctx.fs, path);
+    if (!node || node.type !== 'file') return `awk: ${fileArg}: No such file or directory`;
+    content = node.content || '';
+  }
+
+  const lines = content.split('\n');
+  const output: string[] = [];
+
+  // Parse simple awk patterns:
+  // '{print $N}' | '$N == "val" {print $M}' | '$N == val' | 'NR>1 {sum+=$N} END {print sum}' | '/pattern/'
+  
+  // Check for BEGIN/END blocks
+  let beginBlock = '';
+  let mainPattern = '';
+  let mainAction = '';
+  let endBlock = '';
+
+  const beginMatch = program.match(/BEGIN\s*\{([^}]*)\}/);
+  const endMatch = program.match(/END\s*\{([^}]*)\}/);
+  if (beginMatch) beginBlock = beginMatch[1];
+  if (endMatch) endBlock = endMatch[1];
+
+  // Remove BEGIN/END blocks to get main
+  let mainProg = program
+    .replace(/BEGIN\s*\{[^}]*\}/, '')
+    .replace(/END\s*\{[^}]*\}/, '')
+    .trim();
+
+  // Parse main: pattern {action} or just {action} or just pattern
+  const mainMatch = mainProg.match(/^([^{]*?)\s*\{([^}]*)\}\s*$/);
+  if (mainMatch) {
+    mainPattern = mainMatch[1].trim();
+    mainAction = mainMatch[2].trim();
+  } else if (mainProg.startsWith('{') && mainProg.endsWith('}')) {
+    mainAction = mainProg.slice(1, -1).trim();
+  } else if (mainProg) {
+    mainPattern = mainProg;
+    mainAction = 'print $0';
+  }
+
+  // Variables for awk execution
+  const vars: Record<string, number> = {};
+
+  const getFields = (line: string) => {
+    const fields = line.split(delimiter);
+    return ['', ...fields]; // $0 = full line at index concept
+  };
+
+  const evalExpr = (expr: string, fields: string[], fullLine: string, nr: number): string => {
+    let result = expr;
+    // Replace $0 with full line
+    result = result.replace(/\$0/g, fullLine);
+    // Replace $N with field values
+    result = result.replace(/\$(\d+)/g, (_, n) => fields[parseInt(n)] || '');
+    // Replace NR
+    result = result.replace(/\bNR\b/g, String(nr));
+    // Replace NF
+    result = result.replace(/\bNF\b/g, String(fields.length - 1));
+    // Replace variable references
+    for (const [k, v] of Object.entries(vars)) {
+      result = result.replace(new RegExp('\\b' + k + '\\b', 'g'), String(v));
+    }
+    return result;
+  };
+
+  const executeAction = (action: string, fields: string[], fullLine: string, nr: number): string | null => {
+    // Handle multiple statements separated by ;
+    const statements = action.split(';').map(s => s.trim()).filter(Boolean);
+    let printOutput: string | null = null;
+
+    for (const stmt of statements) {
+      // sum+=$N
+      const accMatch = stmt.match(/^(\w+)\s*\+=\s*\$(\d+)$/);
+      if (accMatch) {
+        const varName = accMatch[1];
+        const fieldIdx = parseInt(accMatch[2]);
+        const val = parseFloat(fields[fieldIdx] || '0');
+        vars[varName] = (vars[varName] || 0) + val;
+        continue;
+      }
+
+      // variable = expression
+      const assignMatch = stmt.match(/^(\w+)\s*=\s*(.+)$/);
+      if (assignMatch && !stmt.startsWith('print')) {
+        const varName = assignMatch[1];
+        const val = evalExpr(assignMatch[2], fields, fullLine, nr);
+        vars[varName] = parseFloat(val) || 0;
+        continue;
+      }
+
+      // print
+      if (stmt.startsWith('print')) {
+        const printExpr = stmt.replace(/^print\s*/, '');
+        if (!printExpr) {
+          printOutput = fullLine;
+        } else {
+          printOutput = evalExpr(printExpr, fields, fullLine, nr);
+        }
+      }
+    }
+    return printOutput;
+  };
+
+  const checkPattern = (pattern: string, fields: string[], fullLine: string, nr: number): boolean => {
+    if (!pattern) return true;
+    // NR>1
+    const nrMatch = pattern.match(/^NR\s*([><=!]+)\s*(\d+)$/);
+    if (nrMatch) {
+      const op = nrMatch[1];
+      const val = parseInt(nrMatch[2]);
+      if (op === '>') return nr > val;
+      if (op === '>=') return nr >= val;
+      if (op === '<') return nr < val;
+      if (op === '==') return nr === val;
+      if (op === '!=') return nr !== val;
+    }
+    // $N == "val" or $N == val
+    const fieldMatch = pattern.match(/^\$(\d+)\s*([=!<>]+)\s*"?([^"]*)"?$/);
+    if (fieldMatch) {
+      const fieldVal = fields[parseInt(fieldMatch[1])] || '';
+      const op = fieldMatch[2];
+      const cmpVal = fieldMatch[3];
+      if (op === '==' || op === '=') return fieldVal === cmpVal;
+      if (op === '!=') return fieldVal !== cmpVal;
+      if (op === '>') return parseFloat(fieldVal) > parseFloat(cmpVal);
+      if (op === '<') return parseFloat(fieldVal) < parseFloat(cmpVal);
+      if (op === '>=') return parseFloat(fieldVal) >= parseFloat(cmpVal);
+      if (op === '<=') return parseFloat(fieldVal) <= parseFloat(cmpVal);
+    }
+    // /regex/
+    const regexMatch = pattern.match(/^\/(.+)\/$/);
+    if (regexMatch) {
+      return new RegExp(regexMatch[1]).test(fullLine);
+    }
+    return true;
+  };
+
+  // Process lines
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const nr = i + 1;
+    const fields = getFields(line);
+
+    if (checkPattern(mainPattern, fields, line, nr)) {
+      if (mainAction) {
+        const result = executeAction(mainAction, fields, line, nr);
+        if (result !== null) output.push(result);
+      } else {
+        output.push(line);
+      }
+    }
+  }
+
+  // END block
+  if (endBlock) {
+    const result = executeAction(endBlock, [''], '', lines.length + 1);
+    if (result !== null) output.push(result);
+  }
+
+  return output.join('\n');
+}
+
+function cmdSed(args: string[], ctx: CommandContext, pipedInput?: string): string {
+  if (args.length === 0) return 'sed: missing script';
+
+  let script = args[0];
+  let fileArg = args[1] || '';
+  
+  // Handle quoted scripts
+  if (script.startsWith("'") || script.startsWith('"')) {
+    const quote = script[0];
+    const joined = args.join(' ');
+    const endQ = joined.indexOf(quote, 1);
+    if (endQ > 0) {
+      script = joined.substring(1, endQ);
+      fileArg = joined.substring(endQ + 1).trim();
+    }
+  }
+
+  let content: string;
+  if (pipedInput !== undefined) {
+    content = pipedInput;
+  } else {
+    if (!fileArg) return 'sed: missing input file';
+    const path = resolvePath(ctx.cwd, fileArg);
+    const node = getNode(ctx.fs, path);
+    if (!node || node.type !== 'file') return `sed: ${fileArg}: No such file or directory`;
+    content = node.content || '';
+  }
+
+  const lines = content.split('\n');
+
+  // Parse sed commands: s/old/new/[g], /pattern/d, Nd
+  // Substitution: s/old/new/g
+  const subMatch = script.match(/^s(.)(.+?)\1(.*?)\1(g?)$/);
+  if (subMatch) {
+    const [, , pattern, replacement, globalFlag] = subMatch;
+    const regex = globalFlag
+      ? new RegExp(pattern, 'g')
+      : new RegExp(pattern);
+    return lines.map(l => l.replace(regex, replacement)).join('\n');
+  }
+
+  // Delete by pattern: /pattern/d
+  const delPatternMatch = script.match(/^\/(.+)\/d$/);
+  if (delPatternMatch) {
+    const pattern = new RegExp(delPatternMatch[1]);
+    return lines.filter(l => !pattern.test(l)).join('\n');
+  }
+
+  // Delete by line number: Nd
+  const delLineMatch = script.match(/^(\d+)d$/);
+  if (delLineMatch) {
+    const lineNum = parseInt(delLineMatch[1]);
+    return lines.filter((_, i) => i + 1 !== lineNum).join('\n');
+  }
+
+  // Print specific line: Np
+  const printLineMatch = script.match(/^(\d+)p$/);
+  if (printLineMatch) {
+    const lineNum = parseInt(printLineMatch[1]);
+    return lines[lineNum - 1] || '';
+  }
+
+  return content;
+}
+
+function cmdTac(args: string[], ctx: CommandContext, pipedInput?: string): string {
+  let content: string;
+  if (pipedInput !== undefined) {
+    content = pipedInput;
+  } else {
+    if (args.length === 0) return 'tac: missing operand';
+    const path = resolvePath(ctx.cwd, args[0]);
+    const node = getNode(ctx.fs, path);
+    if (!node || node.type !== 'file') return `tac: ${args[0]}: No such file or directory`;
+    content = node.content || '';
+  }
+  return content.split('\n').reverse().join('\n');
+}
+
+function cmdPaste(args: string[], ctx: CommandContext): string {
+  const files = args.filter(a => !a.startsWith('-'));
+  if (files.length < 2) return 'paste: missing operand';
+
+  const delimiter = '\t';
+  const fileContents = files.map(f => {
+    const path = resolvePath(ctx.cwd, f);
+    const node = getNode(ctx.fs, path);
+    if (!node || node.type !== 'file') return null;
+    return (node.content || '').split('\n');
+  });
+
+  if (fileContents.some(c => c === null)) return 'paste: file not found';
+
+  const maxLines = Math.max(...fileContents.map(c => c!.length));
+  const output: string[] = [];
+  for (let i = 0; i < maxLines; i++) {
+    output.push(fileContents.map(c => c![i] || '').join(delimiter));
+  }
+  return output.join('\n');
+}
+
+function cmdTee(args: string[], ctx: CommandContext, pipedInput?: string): string {
+  if (pipedInput === undefined) return 'tee: missing input (use with pipe)';
+  const file = args.find(a => !a.startsWith('-'));
+  if (file) {
+    const path = resolvePath(ctx.cwd, file);
+    const append = args.includes('-a');
+    const existing = getNode(ctx.fs, path);
+    let content = pipedInput;
+    if (append && existing?.type === 'file') {
+      content = (existing.content || '') + '\n' + pipedInput;
+    }
+    const newFs = setNode(ctx.fs, path, { type: 'file', content });
+    ctx.setFs(newFs);
+  }
+  return pipedInput;
+}
+
+function cmdXargs(args: string[], ctx: CommandContext, pipedInput?: string): string {
+  if (pipedInput === undefined) return 'xargs: missing input (use with pipe)';
+  const items = pipedInput.split('\n').filter(Boolean);
+  
+  if (args.length === 0 || (args.length === 1 && args[0] === 'echo')) {
+    return items.join(' ');
+  }
+  
+  // xargs <cmd> — run cmd with each item
+  const cmd = args.join(' ');
+  const results: string[] = [];
+  for (const item of items) {
+    const result = executeSingle(`${cmd} ${item}`, ctx);
+    if (result) results.push(result);
+  }
+  return results.join('\n');
+}
+
+function cmdBasename(args: string[]): string {
+  if (args.length === 0) return 'basename: missing operand';
+  const path = args[0].replace(/['"]/g, '');
+  const parts = path.split('/').filter(Boolean);
+  return parts[parts.length - 1] || '/';
+}
+
+function cmdDirname(args: string[]): string {
+  if (args.length === 0) return 'dirname: missing operand';
+  const path = args[0].replace(/['"]/g, '');
+  const lastSlash = path.lastIndexOf('/');
+  if (lastSlash <= 0) return '/';
+  return path.substring(0, lastSlash);
+}
+
+function cmdRev(args: string[], ctx: CommandContext, pipedInput?: string): string {
+  let content: string;
+  if (pipedInput !== undefined) {
+    content = pipedInput;
+  } else {
+    if (args.length === 0) return 'rev: missing operand';
+    const path = resolvePath(ctx.cwd, args[0]);
+    const node = getNode(ctx.fs, path);
+    if (!node || node.type !== 'file') return `rev: ${args[0]}: No such file or directory`;
+    content = node.content || '';
+  }
+  return content.split('\n').map(l => l.split('').reverse().join('')).join('\n');
+}
+
+function cmdSeq(args: string[]): string {
+  if (args.length === 0) return 'seq: missing operand';
+  let start = 1, end = 1, step = 1;
+  if (args.length === 1) { end = parseInt(args[0]); }
+  else if (args.length === 2) { start = parseInt(args[0]); end = parseInt(args[1]); }
+  else { start = parseInt(args[0]); step = parseInt(args[1]); end = parseInt(args[2]); }
+  
+  const result: number[] = [];
+  if (step > 0) { for (let i = start; i <= end; i += step) result.push(i); }
+  else if (step < 0) { for (let i = start; i >= end; i += step) result.push(i); }
+  return result.join('\n');
+}
+
+function cmdPs(ctx: CommandContext): string {
+  // Look for .processes file in filesystem
+  const procNode = getNode(ctx.fs, '/.processes');
+  if (procNode?.type === 'file' && procNode.content) {
+    return procNode.content;
+  }
+  return 'PID  USER      CPU%  MEM%  COMMAND\n1    root      0.0   0.1   init\n245  recruit   0.1   0.3   bash';
+}
+
 function cmdMan(args: string[]): string {
   if (args.length === 0) return 'What manual page do you want?\nUsage: man <command>';
   const cmd = args[0];
@@ -1168,6 +1576,186 @@ const MAN_PAGES: Record<string, string> = {
     '',
     '       Example: cat file | tr A-Z a-z   (convert to lowercase)',
   ].join('\n'),
+
+  awk: [
+    '\x1b[1mAWK(1)\x1b[0m                    User Commands                    \x1b[1mAWK(1)\x1b[0m',
+    '',
+    '\x1b[1mNAME\x1b[0m',
+    '       awk - pattern scanning and text processing language',
+    '',
+    '\x1b[1mSYNOPSIS\x1b[0m',
+    "       \x1b[1mawk\x1b[0m [\x1b[4m-F sep\x1b[0m] '\x1b[4mprogram\x1b[0m' [\x1b[4mfile\x1b[0m]",
+    '',
+    '\x1b[1mDESCRIPTION\x1b[0m',
+    '       Process text line by line, splitting into fields.',
+    '',
+    "       \x1b[1m-F\x1b[0m \x1b[4msep\x1b[0m    set field separator (default: whitespace)",
+    '       \x1b[1m$1, $2...\x1b[0m  access fields by number ($0 = whole line)',
+    '       \x1b[1mNR\x1b[0m         current line number',
+    '       \x1b[1mNF\x1b[0m         number of fields in current line',
+    '',
+    '\x1b[1mEXAMPLES\x1b[0m',
+    "       awk '{print $1}' file          Print first field of each line",
+    "       awk -F',' '{print $2}' f.csv   Print 2nd CSV column",
+    "       awk '$3 > 100' file            Print lines where field 3 > 100",
+    "       awk 'NR>1 {s+=$2} END {print s}'  Sum field 2, skip header",
+  ].join('\n'),
+
+  sed: [
+    '\x1b[1mSED(1)\x1b[0m                    User Commands                    \x1b[1mSED(1)\x1b[0m',
+    '',
+    '\x1b[1mNAME\x1b[0m',
+    '       sed - stream editor for filtering and transforming text',
+    '',
+    '\x1b[1mSYNOPSIS\x1b[0m',
+    "       \x1b[1msed\x1b[0m '\x1b[4mcommand\x1b[0m' [\x1b[4mfile\x1b[0m]",
+    '',
+    '\x1b[1mDESCRIPTION\x1b[0m',
+    '       Apply editing commands to text, line by line.',
+    '',
+    '\x1b[1mCOMMANDS\x1b[0m',
+    "       \x1b[1ms/old/new/\x1b[0m     substitute first 'old' with 'new' on each line",
+    "       \x1b[1ms/old/new/g\x1b[0m    substitute ALL occurrences (global)",
+    '       \x1b[1m/pattern/d\x1b[0m     delete lines matching pattern',
+    '       \x1b[1mNd\x1b[0m             delete line number N',
+    '',
+    '\x1b[1mEXAMPLES\x1b[0m',
+    "       sed 's/foo/bar/' file          Replace foo with bar",
+    "       sed 's/foo/bar/g' file         Replace all foo with bar",
+    "       sed '/DEBUG/d' file            Remove lines containing DEBUG",
+  ].join('\n'),
+
+  tac: [
+    '\x1b[1mTAC(1)\x1b[0m                    User Commands                    \x1b[1mTAC(1)\x1b[0m',
+    '',
+    '\x1b[1mNAME\x1b[0m',
+    '       tac - concatenate and print files in reverse',
+    '',
+    '\x1b[1mSYNOPSIS\x1b[0m',
+    '       \x1b[1mtac\x1b[0m [\x1b[4mFILE\x1b[0m]...',
+    '',
+    '\x1b[1mDESCRIPTION\x1b[0m',
+    '       Write each FILE to standard output, last line first.',
+    '       Like cat but in reverse line order.',
+  ].join('\n'),
+
+  paste: [
+    '\x1b[1mPASTE(1)\x1b[0m                  User Commands                  \x1b[1mPASTE(1)\x1b[0m',
+    '',
+    '\x1b[1mNAME\x1b[0m',
+    '       paste - merge lines of files',
+    '',
+    '\x1b[1mSYNOPSIS\x1b[0m',
+    '       \x1b[1mpaste\x1b[0m \x1b[4mFILE1\x1b[0m \x1b[4mFILE2\x1b[0m...',
+    '',
+    '\x1b[1mDESCRIPTION\x1b[0m',
+    '       Merge corresponding lines from each FILE, separated by tabs.',
+  ].join('\n'),
+
+  tee: [
+    '\x1b[1mTEE(1)\x1b[0m                    User Commands                    \x1b[1mTEE(1)\x1b[0m',
+    '',
+    '\x1b[1mNAME\x1b[0m',
+    '       tee - read from stdin, write to stdout and files',
+    '',
+    '\x1b[1mSYNOPSIS\x1b[0m',
+    '       \x1b[1mtee\x1b[0m [\x1b[4m-a\x1b[0m] \x1b[4mFILE\x1b[0m',
+    '',
+    '\x1b[1mDESCRIPTION\x1b[0m',
+    '       Copy stdin to stdout AND to FILE.',
+    '       Use with pipes: cmd | tee output.txt',
+    '',
+    '       \x1b[1m-a\x1b[0m     append to FILE instead of overwriting',
+  ].join('\n'),
+
+  xargs: [
+    '\x1b[1mXARGS(1)\x1b[0m                  User Commands                  \x1b[1mXARGS(1)\x1b[0m',
+    '',
+    '\x1b[1mNAME\x1b[0m',
+    '       xargs - build and execute command lines from standard input',
+    '',
+    '\x1b[1mSYNOPSIS\x1b[0m',
+    '       \x1b[1mxargs\x1b[0m [\x1b[4mcommand\x1b[0m]',
+    '',
+    '\x1b[1mDESCRIPTION\x1b[0m',
+    '       Read items from stdin and execute command with those items.',
+    '       Default command is echo.',
+    '',
+    '\x1b[1mEXAMPLES\x1b[0m',
+    '       cat files.txt | xargs echo     Print all items on one line',
+    '       cat files.txt | xargs cat      Cat each listed file',
+  ].join('\n'),
+
+  basename: [
+    '\x1b[1mBASENAME(1)\x1b[0m               User Commands               \x1b[1mBASENAME(1)\x1b[0m',
+    '',
+    '\x1b[1mNAME\x1b[0m',
+    '       basename - strip directory from filename',
+    '',
+    '\x1b[1mSYNOPSIS\x1b[0m',
+    '       \x1b[1mbasename\x1b[0m \x1b[4mPATH\x1b[0m',
+    '',
+    '\x1b[1mDESCRIPTION\x1b[0m',
+    '       Print PATH with any leading directory components removed.',
+    '       basename /usr/bin/sort → sort',
+  ].join('\n'),
+
+  dirname: [
+    '\x1b[1mDIRNAME(1)\x1b[0m                User Commands                \x1b[1mDIRNAME(1)\x1b[0m',
+    '',
+    '\x1b[1mNAME\x1b[0m',
+    '       dirname - strip last component from file name',
+    '',
+    '\x1b[1mSYNOPSIS\x1b[0m',
+    '       \x1b[1mdirname\x1b[0m \x1b[4mPATH\x1b[0m',
+    '',
+    '\x1b[1mDESCRIPTION\x1b[0m',
+    '       Print PATH with its last component removed.',
+    '       dirname /usr/bin/sort → /usr/bin',
+  ].join('\n'),
+
+  rev: [
+    '\x1b[1mREV(1)\x1b[0m                    User Commands                    \x1b[1mREV(1)\x1b[0m',
+    '',
+    '\x1b[1mNAME\x1b[0m',
+    '       rev - reverse lines characterwise',
+    '',
+    '\x1b[1mSYNOPSIS\x1b[0m',
+    '       \x1b[1mrev\x1b[0m [\x1b[4mFILE\x1b[0m]...',
+    '',
+    '\x1b[1mDESCRIPTION\x1b[0m',
+    '       Reverse the order of characters in every line.',
+  ].join('\n'),
+
+  seq: [
+    '\x1b[1mSEQ(1)\x1b[0m                    User Commands                    \x1b[1mSEQ(1)\x1b[0m',
+    '',
+    '\x1b[1mNAME\x1b[0m',
+    '       seq - print a sequence of numbers',
+    '',
+    '\x1b[1mSYNOPSIS\x1b[0m',
+    '       \x1b[1mseq\x1b[0m [\x1b[4mFIRST\x1b[0m [\x1b[4mINCREMENT\x1b[0m]] \x1b[4mLAST\x1b[0m',
+    '',
+    '\x1b[1mDESCRIPTION\x1b[0m',
+    '       Print numbers from FIRST to LAST, by INCREMENT.',
+    '       seq 5 → 1 2 3 4 5',
+    '       seq 2 5 → 2 3 4 5',
+    '       seq 1 2 10 → 1 3 5 7 9',
+  ].join('\n'),
+
+  ps: [
+    '\x1b[1mPS(1)\x1b[0m                     User Commands                     \x1b[1mPS(1)\x1b[0m',
+    '',
+    '\x1b[1mNAME\x1b[0m',
+    '       ps - report a snapshot of current processes',
+    '',
+    '\x1b[1mSYNOPSIS\x1b[0m',
+    '       \x1b[1mps\x1b[0m',
+    '',
+    '\x1b[1mDESCRIPTION\x1b[0m',
+    '       Display information about running processes.',
+    '       Shows PID, USER, CPU%, MEM%, and COMMAND.',
+  ].join('\n'),
 };
 
 function getHelp(): string {
@@ -1176,6 +1764,7 @@ function getHelp(): string {
     '\x1b[1;31m║\x1b[0m  \x1b[1mLinux Quest - Available Commands\x1b[0m   \x1b[1;31m║\x1b[0m',
     '\x1b[1;31m╚══════════════════════════════════════╝\x1b[0m',
     '',
+    '  \x1b[33m── Stage 1: Basic ──\x1b[0m',
     '  \x1b[32mls\x1b[0m              List directory contents',
     '  \x1b[32mcat\x1b[0m <file>      Display file contents',
     '  \x1b[32mcd\x1b[0m <dir>        Change directory',
@@ -1184,19 +1773,29 @@ function getHelp(): string {
     '  \x1b[32mchmod\x1b[0m <m> <f>   Change file permissions',
     '  \x1b[32msort\x1b[0m <file>     Sort lines',
     '  \x1b[32muniq\x1b[0m            Filter duplicate lines',
-    '  \x1b[32mtail\x1b[0m <file>     Output last lines',
-    '  \x1b[32mhead\x1b[0m <file>     Output first lines',
+    '  \x1b[32mtail\x1b[0m / \x1b[32mhead\x1b[0m     Output first/last lines',
     '  \x1b[32mwc\x1b[0m <file>       Count lines/words/bytes',
     '  \x1b[32mfind\x1b[0m . -name X  Find files by name',
-    '  \x1b[32mmv\x1b[0m <src> <dst>  Move/rename files',
-    '  \x1b[32mcp\x1b[0m <src> <dst>  Copy files',
-    '  \x1b[32mrm\x1b[0m <file>       Remove files',
-    '  \x1b[32mmkdir\x1b[0m <dir>     Create directory',
-    '  \x1b[32mtouch\x1b[0m <file>    Create empty file',
+    '  \x1b[32mmv\x1b[0m / \x1b[32mcp\x1b[0m / \x1b[32mrm\x1b[0m    Move/copy/remove files',
+    '  \x1b[32mmkdir\x1b[0m / \x1b[32mtouch\x1b[0m  Create dirs/files',
     '  \x1b[32mdiff\x1b[0m <f1> <f2>  Compare files',
-    '  \x1b[32mcut\x1b[0m <file>      Extract columns',
-    '  \x1b[32mtr\x1b[0m <s1> <s2>    Translate characters',
+    '  \x1b[32mcut\x1b[0m / \x1b[32mtr\x1b[0m        Extract columns / translate chars',
     '  \x1b[32mecho\x1b[0m <text>     Print text',
+    '',
+    '  \x1b[33m── Stage 2: Advanced ──\x1b[0m',
+    '  \x1b[32mawk\x1b[0m             Pattern scanning & text processing',
+    '  \x1b[32msed\x1b[0m             Stream editor (find/replace)',
+    '  \x1b[32mtac\x1b[0m             Print file in reverse line order',
+    '  \x1b[32mpaste\x1b[0m           Merge files side by side',
+    '  \x1b[32mtee\x1b[0m             Pipe to file AND stdout',
+    '  \x1b[32mxargs\x1b[0m           Build commands from stdin',
+    '  \x1b[32mbasename\x1b[0m        Extract filename from path',
+    '  \x1b[32mdirname\x1b[0m         Extract directory from path',
+    '  \x1b[32mrev\x1b[0m             Reverse characters per line',
+    '  \x1b[32mseq\x1b[0m             Print number sequences',
+    '  \x1b[32mps\x1b[0m              List running processes',
+    '',
+    '  \x1b[33m── Utilities ──\x1b[0m',
     '  \x1b[32mman\x1b[0m <cmd>       Show manual page for command',
     '  \x1b[32mclear\x1b[0m           Clear terminal',
     '  \x1b[32mhint\x1b[0m            Ask the Sensei',
@@ -1212,7 +1811,7 @@ function getHelp(): string {
 export function getCompletions(partial: string, ctx: CommandContext): string[] {
   const parts = partial.split(/\s+/);
   if (parts.length <= 1) {
-    const cmds = ['ls', 'cat', 'cd', 'pwd', 'grep', 'chmod', 'sort', 'uniq', 'tail', 'head', 'wc', 'find', 'mv', 'cp', 'rm', 'mkdir', 'touch', 'diff', 'cut', 'tr', 'echo', 'clear', 'help', 'hint', 'man', 'whoami', 'date'];
+    const cmds = ['ls', 'cat', 'cd', 'pwd', 'grep', 'chmod', 'sort', 'uniq', 'tail', 'head', 'wc', 'find', 'mv', 'cp', 'rm', 'mkdir', 'touch', 'diff', 'cut', 'tr', 'echo', 'clear', 'help', 'hint', 'man', 'whoami', 'date', 'awk', 'sed', 'tac', 'paste', 'tee', 'xargs', 'basename', 'dirname', 'rev', 'seq', 'ps'];
     return cmds.filter(c => c.startsWith(parts[0]));
   }
 
