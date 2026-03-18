@@ -695,9 +695,9 @@ export const levels: Level[] = [
     answer: "Charlie",
     toolbelt: ["sort -rn", "head -n", "cat", "cut"],
     hints: [
-      "'sort -n' sorts numerically, '-r' reverses (highest first)…",
-      "Try 'sort -rn scores.txt | head -n 1' to see the top scorer.",
-      "The format is 'score:name' — use cut or just read the output.",
+      "Check the man page for 'sort' — there are flags for numeric sorting and reversing order…",
+      "Once sorted, you only need the first result. Check 'head' for a flag to limit output lines.",
+      "The format is 'score:name' — read the name from the top result.",
     ],
     filesystem: {
       '/': {
