@@ -721,9 +721,9 @@ export const levels: Level[] = [
     answer: "E-502",
     toolbelt: ["sort -b", "sort -rn", "uniq -c", "head -n", "cat"],
     hints: [
-      "Chain it: sort -b errors.dat | uniq -c | sort -rn",
-      "The -b flag handles messy whitespace, -c counts duplicates.",
-      "The highest count line has the most frequent error code.",
+      "The file has inconsistent whitespace. Check 'sort' man page for a flag that ignores leading blanks…",
+      "Check 'uniq' man page — there's a flag that counts how many times each line appears.",
+      "Chain them: sort (with blank-handling) | uniq (with counting) | sort (numerically, reversed) | head",
     ],
     filesystem: {
       '/': {
