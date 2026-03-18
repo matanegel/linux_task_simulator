@@ -693,7 +693,7 @@ export const levels: Level[] = [
     briefing: "A leaderboard file has scores in random order. Your manager wants to know who has the highest score. The file mixes text and numbers — check the man page for 'sort' to find flags that handle numeric sorting and ordering direction.",
     objective: "Find the player with the highest score in 'scores.txt'. Submit their name.",
     answer: "Charlie",
-    toolbelt: ["sort -rn", "head -n", "cat", "cut"],
+    toolbelt: ["sort", "head", "cat", "cut"],
     hints: [
       "Check the man page for 'sort' — there are flags for numeric sorting and reversing order…",
       "Once sorted, you only need the first result. Check 'head' for a flag to limit output lines.",
