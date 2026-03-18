@@ -612,7 +612,7 @@ export const levels: Level[] = [
     briefing: "A security auditor left hidden config files scattered across the server. You need to find them all and figure out which one contains the audit password. Explore the right flags for 'ls' to reveal what's hidden and compare file details.",
     objective: "Find the hidden audit config file and submit the audit password inside it.",
     answer: "AUDIT_P4SS_2024",
-    toolbelt: ["ls -la", "cat", "ls -lh"],
+    toolbelt: ["ls", "cat"],
     hints: [
       "Hidden files start with a dot. Read the man page for 'ls' — look for a flag that shows all files…",
       "There's also a flag that shows detailed info like file sizes. Combine them to compare hidden files.",
@@ -640,7 +640,7 @@ export const levels: Level[] = [
     briefing: "A forensic analyst needs to reference specific line numbers from an intercepted communication. There's a way to display file contents with line numbers — check the man pages for 'cat' or 'grep' to find the right flag.",
     objective: "Display 'intercept.log' with line numbers. Find the line with GPS coordinates and submit the line NUMBER.",
     answer: "6",
-    toolbelt: ["cat -n", "grep -n"],
+    toolbelt: ["cat", "grep"],
     hints: [
       "Check the man page for 'cat' — there's a flag that adds line numbers to output…",
       "You can also check 'grep' — it has a similar flag for showing line numbers of matches.",
@@ -666,7 +666,7 @@ export const levels: Level[] = [
     briefing: "A blocklist contains IPs that should NOT access the system. But you need to find which IPs in the access log are NOT on the blocklist. Check the man page for 'grep' — there are flags that can invert matching and read patterns from a file.",
     objective: "Find the IP in 'access.log' that is NOT blocked. Submit that IP address.",
     answer: "10.20.30.40",
-    toolbelt: ["grep -v", "grep -f", "grep -i", "cat", "sort"],
+    toolbelt: ["grep", "cat", "sort"],
     hints: [
       "Check the man page for 'grep' — there's a flag that inverts the match (shows lines that DON'T match)…",
       "First see what's in 'blocklist.txt', then figure out how to exclude those patterns.",
@@ -693,7 +693,7 @@ export const levels: Level[] = [
     briefing: "A leaderboard file has scores in random order. Your manager wants to know who has the highest score. The file mixes text and numbers — check the man page for 'sort' to find flags that handle numeric sorting and ordering direction.",
     objective: "Find the player with the highest score in 'scores.txt'. Submit their name.",
     answer: "Charlie",
-    toolbelt: ["sort -rn", "head -n", "cat", "cut"],
+    toolbelt: ["sort", "head", "cat", "cut"],
     hints: [
       "Check the man page for 'sort' — there are flags for numeric sorting and reversing order…",
       "Once sorted, you only need the first result. Check 'head' for a flag to limit output lines.",
@@ -719,7 +719,7 @@ export const levels: Level[] = [
     briefing: "A messy server log has duplicate entries with inconsistent spacing. You need to find which error appears most often. Check the man pages for 'sort' and 'uniq' — there are flags to handle whitespace issues and count duplicates. Chain them together with pipes.",
     objective: "Find the most frequently occurring error code in 'errors.dat'. Submit the error code (e.g., E-XXX).",
     answer: "E-502",
-    toolbelt: ["sort -b", "sort -rn", "uniq -c", "head -n", "cat"],
+    toolbelt: ["sort", "uniq", "head", "cat"],
     hints: [
       "The file has inconsistent whitespace. Check 'sort' man page for a flag that ignores leading blanks…",
       "Check 'uniq' man page — there's a flag that counts how many times each line appears.",
