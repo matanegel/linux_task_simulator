@@ -609,14 +609,14 @@ export const levels: Level[] = [
     id: 20,
     title: "Hidden Audit",
     subtitle: "Stage 5B — Flag Mastery",
-    briefing: "A security auditor left hidden config files scattered across the server. Use 'ls -la' to reveal them all, including their sizes. One hidden file is suspiciously large (over 200 characters). Find it and read it to discover the audit password.",
-    objective: "Use ls -la to find hidden files. Read the large hidden file and submit the audit password inside.",
+    briefing: "A security auditor left hidden config files scattered across the server. You need to find them all and figure out which one contains the audit password. Explore the right flags for 'ls' to reveal what's hidden and compare file details.",
+    objective: "Find the hidden audit config file and submit the audit password inside it.",
     answer: "AUDIT_P4SS_2024",
     toolbelt: ["ls -la", "cat", "ls -lh"],
     hints: [
-      "Hidden files start with a dot. Use 'ls -a' or 'ls -la' to see them…",
-      "The '-l' flag shows sizes. Look for the biggest hidden file.",
-      "Try 'cat .audit_config' after identifying it.",
+      "Hidden files start with a dot. Read the man page for 'ls' — look for a flag that shows all files…",
+      "There's also a flag that shows detailed info like file sizes. Combine them to compare hidden files.",
+      "Found the right flags? Now look for the biggest hidden file and 'cat' it.",
     ],
     filesystem: {
       '/': {
@@ -637,14 +637,14 @@ export const levels: Level[] = [
     id: 21,
     title: "Numbered Evidence",
     subtitle: "Stage 5B — Flag Mastery",
-    briefing: "A forensic analyst needs to reference specific line numbers from an intercepted communication. Use 'cat -n' to display the file with line numbers, then identify which line contains the secret rendezvous coordinates.",
-    objective: "Use cat -n on 'intercept.log' to find the line with GPS coordinates. Submit the line NUMBER where coordinates appear.",
+    briefing: "A forensic analyst needs to reference specific line numbers from an intercepted communication. There's a way to display file contents with line numbers — check the man pages for 'cat' or 'grep' to find the right flag.",
+    objective: "Display 'intercept.log' with line numbers. Find the line with GPS coordinates and submit the line NUMBER.",
     answer: "6",
     toolbelt: ["cat -n", "grep -n"],
     hints: [
-      "'cat -n' adds line numbers to every line of output…",
-      "Look for a line containing GPS or coordinate-like numbers.",
-      "You can also try 'grep -n GPS intercept.log' for a shortcut.",
+      "Check the man page for 'cat' — there's a flag that adds line numbers to output…",
+      "You can also check 'grep' — it has a similar flag for showing line numbers of matches.",
+      "Once you see the numbered output, find the line with GPS coordinates.",
     ],
     filesystem: {
       '/': {
@@ -663,14 +663,14 @@ export const levels: Level[] = [
     id: 22,
     title: "Reverse Lookup",
     subtitle: "Stage 5B — Flag Mastery",
-    briefing: "A blocklist contains IPs that should NOT access the system. But you need to find which IPs in the access log are NOT on the blocklist. Use 'grep -v' (invert match) combined with '-i' to filter them out.",
-    objective: "Find the IP in 'access.log' that does NOT appear in 'blocklist.txt'. Submit that IP address.",
+    briefing: "A blocklist contains IPs that should NOT access the system. But you need to find which IPs in the access log are NOT on the blocklist. Check the man page for 'grep' — there are flags that can invert matching and read patterns from a file.",
+    objective: "Find the IP in 'access.log' that is NOT blocked. Submit that IP address.",
     answer: "10.20.30.40",
     toolbelt: ["grep -v", "grep -f", "grep -i", "cat", "sort"],
     hints: [
-      "'grep -v' shows lines that do NOT match the pattern…",
-      "First check what IPs are blocked with 'cat blocklist.txt'.",
-      "Then use grep -v with each blocked IP, or look into the '-f' flag — 'grep -vf blocklist.txt access.log' reads all patterns from a file at once!",
+      "Check the man page for 'grep' — there's a flag that inverts the match (shows lines that DON'T match)…",
+      "First see what's in 'blocklist.txt', then figure out how to exclude those patterns.",
+      "There's also a flag that reads patterns from a file — check '-f' in the grep man page. Try 'grep -vf blocklist.txt access.log'!",
     ],
     filesystem: {
       '/': {
@@ -690,14 +690,14 @@ export const levels: Level[] = [
     id: 23,
     title: "Top Scorers",
     subtitle: "Stage 5B — Flag Mastery",
-    briefing: "A leaderboard file has scores in random order. Your manager wants the top 3 scores displayed in descending order. Combine 'sort -rn' to sort numerically in reverse, then pipe to 'head -n 3' to grab the top entries.",
-    objective: "Sort 'scores.txt' numerically in reverse and get the top score. Submit the top player's name.",
+    briefing: "A leaderboard file has scores in random order. Your manager wants to know who has the highest score. The file mixes text and numbers — check the man page for 'sort' to find flags that handle numeric sorting and ordering direction.",
+    objective: "Find the player with the highest score in 'scores.txt'. Submit their name.",
     answer: "Charlie",
     toolbelt: ["sort -rn", "head -n", "cat", "cut"],
     hints: [
-      "'sort -n' sorts numerically, '-r' reverses (highest first)…",
-      "Try 'sort -rn scores.txt | head -n 1' to see the top scorer.",
-      "The format is 'score:name' — use cut or just read the output.",
+      "Check the man page for 'sort' — there are flags for numeric sorting and reversing order…",
+      "Once sorted, you only need the first result. Check 'head' for a flag to limit output lines.",
+      "The format is 'score:name' — read the name from the top result.",
     ],
     filesystem: {
       '/': {
@@ -716,14 +716,14 @@ export const levels: Level[] = [
     id: 24,
     title: "Pipeline Master",
     subtitle: "Stage 5B — Flag Mastery",
-    briefing: "A messy server log has duplicate entries with inconsistent spacing. Chain multiple flagged commands: use 'sort -b' to ignore leading blanks, pipe to 'uniq -c' to count occurrences, then pipe to 'sort -rn' to find the most frequent error. Submit the error code that appears most often.",
-    objective: "Run: sort -b errors.dat | uniq -c | sort -rn | head -n 1. Submit the error code (e.g., E-XXX) from the top result.",
+    briefing: "A messy server log has duplicate entries with inconsistent spacing. You need to find which error appears most often. Check the man pages for 'sort' and 'uniq' — there are flags to handle whitespace issues and count duplicates. Chain them together with pipes.",
+    objective: "Find the most frequently occurring error code in 'errors.dat'. Submit the error code (e.g., E-XXX).",
     answer: "E-502",
     toolbelt: ["sort -b", "sort -rn", "uniq -c", "head -n", "cat"],
     hints: [
-      "Chain it: sort -b errors.dat | uniq -c | sort -rn",
-      "The -b flag handles messy whitespace, -c counts duplicates.",
-      "The highest count line has the most frequent error code.",
+      "The file has inconsistent whitespace. Check 'sort' man page for a flag that ignores leading blanks…",
+      "Check 'uniq' man page — there's a flag that counts how many times each line appears.",
+      "Chain them: sort (with blank-handling) | uniq (with counting) | sort (numerically, reversed) | head",
     ],
     filesystem: {
       '/': {
