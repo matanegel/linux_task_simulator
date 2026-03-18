@@ -182,7 +182,7 @@ export default function MissionBriefing({ levelId, totalLevels, title, subtitle,
           ))}
         </div>
         <p className="text-xs text-muted-foreground mt-2 text-center">
-          Level {levelId} of {totalLevels} · {solvedLevels.size} solved
+          Stage {stage} ({stageName}) · {stageSolvedCount}/{stageTotalCount} solved · Level {levelId} of {totalLevels} total
         </p>
       </div>
     </div>
