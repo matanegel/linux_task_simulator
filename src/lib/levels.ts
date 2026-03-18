@@ -642,9 +642,9 @@ export const levels: Level[] = [
     answer: "6",
     toolbelt: ["cat -n", "grep -n"],
     hints: [
-      "'cat -n' adds line numbers to every line of output…",
-      "Look for a line containing GPS or coordinate-like numbers.",
-      "You can also try 'grep -n GPS intercept.log' for a shortcut.",
+      "Check the man page for 'cat' — there's a flag that adds line numbers to output…",
+      "You can also check 'grep' — it has a similar flag for showing line numbers of matches.",
+      "Once you see the numbered output, find the line with GPS coordinates.",
     ],
     filesystem: {
       '/': {
