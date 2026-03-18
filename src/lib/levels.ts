@@ -716,8 +716,8 @@ export const levels: Level[] = [
     id: 24,
     title: "Pipeline Master",
     subtitle: "Stage 5B — Flag Mastery",
-    briefing: "A messy server log has duplicate entries with inconsistent spacing. Chain multiple flagged commands: use 'sort -b' to ignore leading blanks, pipe to 'uniq -c' to count occurrences, then pipe to 'sort -rn' to find the most frequent error. Submit the error code that appears most often.",
-    objective: "Run: sort -b errors.dat | uniq -c | sort -rn | head -n 1. Submit the error code (e.g., E-XXX) from the top result.",
+    briefing: "A messy server log has duplicate entries with inconsistent spacing. You need to find which error appears most often. Check the man pages for 'sort' and 'uniq' — there are flags to handle whitespace issues and count duplicates. Chain them together with pipes.",
+    objective: "Find the most frequently occurring error code in 'errors.dat'. Submit the error code (e.g., E-XXX).",
     answer: "E-502",
     toolbelt: ["sort -b", "sort -rn", "uniq -c", "head -n", "cat"],
     hints: [
