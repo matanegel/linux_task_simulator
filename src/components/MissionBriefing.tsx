@@ -23,6 +23,17 @@ const MAN_PAGE_URLS: Record<string, string> = {
   'diff': 'https://man7.org/linux/man-pages/man1/diff.1.html',
   'cut': 'https://man7.org/linux/man-pages/man1/cut.1.html',
   'tr': 'https://man7.org/linux/man-pages/man1/tr.1.html',
+  'awk': 'https://man7.org/linux/man-pages/man1/awk.1p.html',
+  'sed': 'https://man7.org/linux/man-pages/man1/sed.1.html',
+  'tac': 'https://man7.org/linux/man-pages/man1/tac.1.html',
+  'paste': 'https://man7.org/linux/man-pages/man1/paste.1.html',
+  'tee': 'https://man7.org/linux/man-pages/man1/tee.1.html',
+  'xargs': 'https://man7.org/linux/man-pages/man1/xargs.1.html',
+  'basename': 'https://man7.org/linux/man-pages/man1/basename.1.html',
+  'dirname': 'https://man7.org/linux/man-pages/man1/dirname.1.html',
+  'rev': 'https://man7.org/linux/man-pages/man1/rev.1.html',
+  'seq': 'https://man7.org/linux/man-pages/man1/seq.1.html',
+  'ps': 'https://man7.org/linux/man-pages/man1/ps.1.html',
 };
 
 function getManUrl(tool: string): string | null {
