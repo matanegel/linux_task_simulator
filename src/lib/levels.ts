@@ -690,8 +690,8 @@ export const levels: Level[] = [
     id: 23,
     title: "Top Scorers",
     subtitle: "Stage 5B — Flag Mastery",
-    briefing: "A leaderboard file has scores in random order. Your manager wants the top 3 scores displayed in descending order. Combine 'sort -rn' to sort numerically in reverse, then pipe to 'head -n 3' to grab the top entries.",
-    objective: "Sort 'scores.txt' numerically in reverse and get the top score. Submit the top player's name.",
+    briefing: "A leaderboard file has scores in random order. Your manager wants to know who has the highest score. The file mixes text and numbers — check the man page for 'sort' to find flags that handle numeric sorting and ordering direction.",
+    objective: "Find the player with the highest score in 'scores.txt'. Submit their name.",
     answer: "Charlie",
     toolbelt: ["sort -rn", "head -n", "cat", "cut"],
     hints: [
