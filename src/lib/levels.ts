@@ -668,9 +668,9 @@ export const levels: Level[] = [
     answer: "10.20.30.40",
     toolbelt: ["grep -v", "grep -f", "grep -i", "cat", "sort"],
     hints: [
-      "'grep -v' shows lines that do NOT match the pattern…",
-      "First check what IPs are blocked with 'cat blocklist.txt'.",
-      "Then use grep -v with each blocked IP, or look into the '-f' flag — 'grep -vf blocklist.txt access.log' reads all patterns from a file at once!",
+      "Check the man page for 'grep' — there's a flag that inverts the match (shows lines that DON'T match)…",
+      "First see what's in 'blocklist.txt', then figure out how to exclude those patterns.",
+      "There's also a flag that reads patterns from a file — check '-f' in the grep man page. Try 'grep -vf blocklist.txt access.log'!",
     ],
     filesystem: {
       '/': {
