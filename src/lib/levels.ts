@@ -719,7 +719,7 @@ export const levels: Level[] = [
     briefing: "A messy server log has duplicate entries with inconsistent spacing. You need to find which error appears most often. Check the man pages for 'sort' and 'uniq' — there are flags to handle whitespace issues and count duplicates. Chain them together with pipes.",
     objective: "Find the most frequently occurring error code in 'errors.dat'. Submit the error code (e.g., E-XXX).",
     answer: "E-502",
-    toolbelt: ["sort -b", "sort -rn", "uniq -c", "head -n", "cat"],
+    toolbelt: ["sort", "uniq", "head", "cat"],
     hints: [
       "The file has inconsistent whitespace. Check 'sort' man page for a flag that ignores leading blanks…",
       "Check 'uniq' man page — there's a flag that counts how many times each line appears.",
