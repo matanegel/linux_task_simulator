@@ -138,6 +138,17 @@ function executeSingle(input: string, ctx: CommandContext, pipedInput?: string):
     case 'diff': return cmdDiff(args.slice(1), ctx);
     case 'cut': return cmdCut(args.slice(1), ctx, pipedInput);
     case 'tr': return cmdTr(args.slice(1), ctx, pipedInput);
+    case 'awk': return cmdAwk(args.slice(1), ctx, pipedInput);
+    case 'sed': return cmdSed(args.slice(1), ctx, pipedInput);
+    case 'tac': return cmdTac(args.slice(1), ctx, pipedInput);
+    case 'paste': return cmdPaste(args.slice(1), ctx);
+    case 'tee': return cmdTee(args.slice(1), ctx, pipedInput);
+    case 'xargs': return cmdXargs(args.slice(1), ctx, pipedInput);
+    case 'basename': return cmdBasename(args.slice(1));
+    case 'dirname': return cmdDirname(args.slice(1));
+    case 'rev': return cmdRev(args.slice(1), ctx, pipedInput);
+    case 'seq': return cmdSeq(args.slice(1));
+    case 'ps': return cmdPs(ctx);
     case 'echo': return args.slice(1).join(' ');
     case 'clear': return '__CLEAR__';
     case 'help': return getHelp();
