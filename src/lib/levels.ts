@@ -666,7 +666,7 @@ export const levels: Level[] = [
     briefing: "A blocklist contains IPs that should NOT access the system. But you need to find which IPs in the access log are NOT on the blocklist. Check the man page for 'grep' — there are flags that can invert matching and read patterns from a file.",
     objective: "Find the IP in 'access.log' that is NOT blocked. Submit that IP address.",
     answer: "10.20.30.40",
-    toolbelt: ["grep -v", "grep -f", "grep -i", "cat", "sort"],
+    toolbelt: ["grep", "cat", "sort"],
     hints: [
       "Check the man page for 'grep' — there's a flag that inverts the match (shows lines that DON'T match)…",
       "First see what's in 'blocklist.txt', then figure out how to exclude those patterns.",
