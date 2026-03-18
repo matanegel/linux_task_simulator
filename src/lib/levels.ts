@@ -26,6 +26,7 @@ export const levels: Level[] = [
   // ════════════════════════════════════════════════════════════
   {
     id: 1,
+    stage: 1,
     title: "First Contact",
     subtitle: "Stage 1 — Orientation",
     briefing: "You've just SSH'd into a remote server for the first time. Your manager said 'look around and tell me what files are on the box.' Simple enough — you just need to list the directory contents.",
@@ -52,6 +53,7 @@ export const levels: Level[] = [
   },
   {
     id: 2,
+    stage: 1,
     title: "Read the Manual",
     subtitle: "Stage 1 — Reading Files",
     briefing: "A developer left a note for you in a file called 'handoff.txt' before going on vacation. You need to read it to find out which database port the app connects to.",
@@ -77,6 +79,7 @@ export const levels: Level[] = [
   },
   {
     id: 3,
+    stage: 1,
     title: "Where Am I?",
     subtitle: "Stage 1 — Navigation",
     briefing: "You're debugging a deployment issue and need to navigate to the config directory buried inside the project. The deployment script references a file at '/app/config/deploy.yml'. Go there and find the target server hostname.",
@@ -118,6 +121,7 @@ export const levels: Level[] = [
   },
   {
     id: 4,
+    stage: 1,
     title: "Hidden in Plain Sight",
     subtitle: "Stage 1 — Hidden Files",
     briefing: "Your colleague says 'I left the API key in a dotfile in your home directory.' Dotfiles are hidden by default — a regular listing won't show them. Find the hidden file and retrieve the API key.",
@@ -148,6 +152,7 @@ export const levels: Level[] = [
   // ════════════════════════════════════════════════════════════
   {
     id: 5,
+    stage: 1,
     title: "Needle in a Haystack",
     subtitle: "Stage 2 — Text Search",
     briefing: "The security team reported that someone hard-coded a password in one of the project files. There are dozens of files — reading each one would take forever. Use grep to search for the keyword 'password' across all files.",
@@ -175,6 +180,7 @@ export const levels: Level[] = [
   },
   {
     id: 6,
+    stage: 1,
     title: "Deep Recon",
     subtitle: "Stage 2 — Recursive Search",
     briefing: "A large codebase has a TODO comment somewhere that says 'FIXME: security vulnerability'. You know it's in a deeply nested folder but not where. Combine find, ls, and grep to track it down. Submit the filename containing the vulnerability.",
@@ -222,6 +228,7 @@ export const levels: Level[] = [
   },
   {
     id: 7,
+    stage: 1,
     title: "Permission Denied",
     subtitle: "Stage 2 — Access Control",
     briefing: "The DevOps team left a deploy script on the server, but it won't run — the execute permission is missing. Check the permissions, fix them, then run the script to get the deploy token.",
@@ -247,6 +254,7 @@ export const levels: Level[] = [
   },
   {
     id: 8,
+    stage: 1,
     title: "Lost Config",
     subtitle: "Stage 2 — Finding Files",
     briefing: "During a server migration, a critical file called 'nginx.conf' got moved somewhere unknown in the directory tree. Use the find command to locate it, then read it to find the listen port.",
@@ -296,6 +304,7 @@ export const levels: Level[] = [
   // ════════════════════════════════════════════════════════════
   {
     id: 9,
+    stage: 1,
     title: "Build the Scaffold",
     subtitle: "Stage 3 — Creating Structure",
     briefing: "You're setting up a new microservice. Create a directory called 'api', then create a file called 'server.js' inside it using touch. Finally, use echo to write 'PORT=4000' into a config file. Verify your work by reading the config.",
@@ -319,6 +328,7 @@ export const levels: Level[] = [
   },
   {
     id: 10,
+    stage: 1,
     title: "Evidence Locker",
     subtitle: "Stage 3 — Copy & Remove",
     briefing: "Incident response protocol: before deleting a suspicious file, always make a backup copy first. Copy 'malware.bin' to 'evidence/malware_backup.bin', then delete the original. Read the backup to find the threat signature.",
@@ -344,6 +354,7 @@ export const levels: Level[] = [
   },
   {
     id: 11,
+    stage: 1,
     title: "Clean Sweep",
     subtitle: "Stage 3 — Moving & Organizing",
     briefing: "The intern dumped everything into one folder. You need to move 'report.pdf' into the 'docs/' directory and 'app.log' into the 'logs/' directory. After organizing, read report.pdf to find the project codename.",
@@ -371,6 +382,7 @@ export const levels: Level[] = [
   },
   {
     id: 12,
+    stage: 1,
     title: "Append the Log",
     subtitle: "Stage 3 — Redirection",
     briefing: "The monitoring system needs a status update appended to the daily log. Use echo with >> to append 'ALL_CLEAR' to 'status.log' without overwriting existing entries. Then verify the last line.",
@@ -398,6 +410,7 @@ export const levels: Level[] = [
   // ════════════════════════════════════════════════════════════
   {
     id: 13,
+    stage: 1,
     title: "Server Triage",
     subtitle: "Stage 4 — Sorting & Counting",
     briefing: "The syslog is flooded with errors after a bad deploy. You need to sort the log and count how many lines it has so the team knows the scale of the problem. Use wc and sort together.",
@@ -424,6 +437,7 @@ export const levels: Level[] = [
   },
   {
     id: 14,
+    stage: 1,
     title: "Unique Error",
     subtitle: "Stage 4 — Deduplication",
     briefing: "The same error messages repeat many times in the log. Your team wants to know which error appeared only ONCE — it's likely the root cause. Sort the log and filter for unique-only entries.",
@@ -461,6 +475,7 @@ export const levels: Level[] = [
   },
   {
     id: 15,
+    stage: 1,
     title: "Top of the File",
     subtitle: "Stage 4 — Partial Reading",
     briefing: "A 10,000-line log file has a license key on line 4. You don't want to scroll through the whole thing. Use head to grab just the first few lines and extract the key.",
@@ -487,6 +502,7 @@ export const levels: Level[] = [
   },
   {
     id: 16,
+    stage: 1,
     title: "CSV Surgeon",
     subtitle: "Stage 4 — Column Extraction",
     briefing: "A CSV export from the HR system has employee data. Your manager needs just the email addresses (column 3). Use cut to extract that column, then find the row for the user 'admin'.",
@@ -517,6 +533,7 @@ export const levels: Level[] = [
   // ════════════════════════════════════════════════════════════
   {
     id: 17,
+    stage: 1,
     title: "Config Drift",
     subtitle: "Stage 5 — Comparing Files",
     briefing: "Two servers should have identical configs, but one is misbehaving. Use diff to compare 'prod.conf' and 'staging.conf' to find what's different. The changed value is the root cause.",
@@ -541,6 +558,7 @@ export const levels: Level[] = [
   },
   {
     id: 18,
+    stage: 1,
     title: "Pipe Operator",
     subtitle: "Stage 5 — Command Chains",
     briefing: "An access log records every IP that hit the server. Most IPs are repeat visitors, but one accessed the system exactly once — a potential attacker doing recon. Chain sort and uniq to isolate it.",
@@ -578,6 +596,7 @@ export const levels: Level[] = [
   },
   {
     id: 19,
+    stage: 1,
     title: "Case Cracker",
     subtitle: "Stage 5 — Text Transformation",
     briefing: "An intercepted message is encoded in uppercase. Intelligence says converting it to lowercase will reveal a hidden keyword on line 3. Use tr with pipes to decode it, then extract line 3 using head and tail.",
@@ -608,6 +627,7 @@ export const levels: Level[] = [
   // ════════════════════════════════════════════════════════════
   {
     id: 20,
+    stage: 1,
     title: "Hidden Audit",
     subtitle: "Stage 5B — Flag Mastery",
     briefing: "A security auditor left hidden config files scattered across the server. You need to find them all and figure out which one contains the audit password. Explore the right flags for 'ls' to reveal what's hidden and compare file details.",
@@ -636,6 +656,7 @@ export const levels: Level[] = [
   },
   {
     id: 21,
+    stage: 1,
     title: "Numbered Evidence",
     subtitle: "Stage 5B — Flag Mastery",
     briefing: "A forensic analyst needs to reference specific line numbers from an intercepted communication. There's a way to display file contents with line numbers — check the man pages for 'cat' or 'grep' to find the right flag.",
@@ -662,6 +683,7 @@ export const levels: Level[] = [
   },
   {
     id: 22,
+    stage: 1,
     title: "Reverse Lookup",
     subtitle: "Stage 5B — Flag Mastery",
     briefing: "A blocklist contains IPs that should NOT access the system. But you need to find which IPs in the access log are NOT on the blocklist. Check the man page for 'grep' — there are flags that can invert matching and read patterns from a file.",
@@ -689,6 +711,7 @@ export const levels: Level[] = [
   },
   {
     id: 23,
+    stage: 1,
     title: "Top Scorers",
     subtitle: "Stage 5B — Flag Mastery",
     briefing: "A leaderboard file has scores in random order. Your manager wants to know who has the highest score. The file mixes text and numbers — check the man page for 'sort' to find flags that handle numeric sorting and ordering direction.",
@@ -715,6 +738,7 @@ export const levels: Level[] = [
   },
   {
     id: 24,
+    stage: 1,
     title: "Pipeline Master",
     subtitle: "Stage 5B — Flag Mastery",
     briefing: "A messy server log has duplicate entries with inconsistent spacing. You need to find which error appears most often. Check the man pages for 'sort' and 'uniq' — there are flags to handle whitespace issues and count duplicates. Chain them together with pipes.",
@@ -745,6 +769,7 @@ export const levels: Level[] = [
   // ════════════════════════════════════════════════════════════
   {
     id: 25,
+    stage: 1,
     title: "Incident Response",
     subtitle: "Stage 6 — The Final Mission",
     briefing: "A breach has been detected. The attacker left traces across multiple directories. Your mission: navigate the filesystem, search logs for the breach indicator, find the attacker's IP, locate the stolen data file, make a locked recovery script executable, and run it to get the final clearance code. This is everything you've learned — ls, cd, cat, grep, find, chmod, pipes — all in one mission.",
