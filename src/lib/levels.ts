@@ -612,7 +612,7 @@ export const levels: Level[] = [
     briefing: "A security auditor left hidden config files scattered across the server. You need to find them all and figure out which one contains the audit password. Explore the right flags for 'ls' to reveal what's hidden and compare file details.",
     objective: "Find the hidden audit config file and submit the audit password inside it.",
     answer: "AUDIT_P4SS_2024",
-    toolbelt: ["ls -la", "cat", "ls -lh"],
+    toolbelt: ["ls", "cat"],
     hints: [
       "Hidden files start with a dot. Read the man page for 'ls' — look for a flag that shows all files…",
       "There's also a flag that shows detailed info like file sizes. Combine them to compare hidden files.",
