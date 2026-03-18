@@ -637,8 +637,8 @@ export const levels: Level[] = [
     id: 21,
     title: "Numbered Evidence",
     subtitle: "Stage 5B — Flag Mastery",
-    briefing: "A forensic analyst needs to reference specific line numbers from an intercepted communication. Use 'cat -n' to display the file with line numbers, then identify which line contains the secret rendezvous coordinates.",
-    objective: "Use cat -n on 'intercept.log' to find the line with GPS coordinates. Submit the line NUMBER where coordinates appear.",
+    briefing: "A forensic analyst needs to reference specific line numbers from an intercepted communication. There's a way to display file contents with line numbers — check the man pages for 'cat' or 'grep' to find the right flag.",
+    objective: "Display 'intercept.log' with line numbers. Find the line with GPS coordinates and submit the line NUMBER.",
     answer: "6",
     toolbelt: ["cat -n", "grep -n"],
     hints: [
