@@ -1212,7 +1212,7 @@ function getHelp(): string {
 export function getCompletions(partial: string, ctx: CommandContext): string[] {
   const parts = partial.split(/\s+/);
   if (parts.length <= 1) {
-    const cmds = ['ls', 'cat', 'cd', 'pwd', 'grep', 'chmod', 'sort', 'uniq', 'tail', 'head', 'wc', 'find', 'mv', 'cp', 'rm', 'mkdir', 'touch', 'diff', 'cut', 'tr', 'echo', 'clear', 'help', 'hint', 'whoami', 'date'];
+    const cmds = ['ls', 'cat', 'cd', 'pwd', 'grep', 'chmod', 'sort', 'uniq', 'tail', 'head', 'wc', 'find', 'mv', 'cp', 'rm', 'mkdir', 'touch', 'diff', 'cut', 'tr', 'echo', 'clear', 'help', 'hint', 'man', 'whoami', 'date'];
     return cmds.filter(c => c.startsWith(parts[0]));
   }
 
