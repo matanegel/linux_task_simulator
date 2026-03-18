@@ -640,7 +640,7 @@ export const levels: Level[] = [
     briefing: "A forensic analyst needs to reference specific line numbers from an intercepted communication. There's a way to display file contents with line numbers — check the man pages for 'cat' or 'grep' to find the right flag.",
     objective: "Display 'intercept.log' with line numbers. Find the line with GPS coordinates and submit the line NUMBER.",
     answer: "6",
-    toolbelt: ["cat -n", "grep -n"],
+    toolbelt: ["cat", "grep"],
     hints: [
       "Check the man page for 'cat' — there's a flag that adds line numbers to output…",
       "You can also check 'grep' — it has a similar flag for showing line numbers of matches.",
